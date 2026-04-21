@@ -1,15 +1,16 @@
-import { motion } from "framer-motion";
+import { useState } from "react";
+import InstagramEmbed from "./InstagramEmbed";
+import TikTokEmbed from "./TikTokEmbed";
+import { INSTAGRAM_POSTS, TIKTOK_POSTS, SOCIAL_HANDLES } from "@/config/socialPosts";
 
-const posts = [
-  { tag: "TECHNIEK", title: "First-touch under pressure" },
-  { tag: "1-ON-1", title: "Body feints + acceleration" },
-  { tag: "VISIE", title: "Scanning before receiving" },
-  { tag: "INTENSITY", title: "Cone work at game speed" },
-  { tag: "BVO", title: "Trial-day preparation" },
-  { tag: "FINISHING", title: "Cold-blooded inside the box" },
-];
+type Tab = "instagram" | "tiktok";
 
 const Social = () => {
+  const [tab, setTab] = useState<Tab>("instagram");
+
+  const igEmpty = INSTAGRAM_POSTS.length === 0;
+  const ttEmpty = TIKTOK_POSTS.length === 0;
+
   return (
     <section className="relative py-24 md:py-32 border-b border-border">
       <div className="container">
@@ -20,41 +21,117 @@ const Social = () => {
               From the<br/>Pitch.
             </h2>
           </div>
-          <div className="flex gap-3">
-            <a href="#contact" className="border border-border px-5 py-3 text-xs uppercase tracking-widest hover:border-primary hover:text-primary transition-colors">@FTFA · Instagram</a>
-            <a href="#contact" className="border border-border px-5 py-3 text-xs uppercase tracking-widest hover:border-primary hover:text-primary transition-colors">@FTFA · TikTok</a>
+
+          <div className="flex gap-2">
+            <button
+              onClick={() => setTab("instagram")}
+              className={`px-5 py-3 text-xs uppercase tracking-widest border transition-colors ${
+                tab === "instagram"
+                  ? "border-primary bg-primary text-primary-foreground"
+                  : "border-border hover:border-foreground/50"
+              }`}
+            >
+              Instagram
+            </button>
+            <button
+              onClick={() => setTab("tiktok")}
+              className={`px-5 py-3 text-xs uppercase tracking-widest border transition-colors ${
+                tab === "tiktok"
+                  ? "border-primary bg-primary text-primary-foreground"
+                  : "border-border hover:border-foreground/50"
+              }`}
+            >
+              TikTok
+            </button>
           </div>
         </div>
 
-        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-2">
-          {posts.map((p, i) => (
-            <motion.a
-              href="#contact"
-              key={i}
-              initial={{ opacity: 0, y: 20 }}
-              whileInView={{ opacity: 1, y: 0 }}
-              viewport={{ once: true }}
-              transition={{ duration: 0.5, delay: i * 0.05 }}
-              className="group relative aspect-[9/16] bg-card border border-border overflow-hidden block"
-            >
-              <div className="absolute inset-0 bg-gradient-to-br from-secondary via-card to-background" />
-              <div className="absolute inset-0 grid-bg opacity-50" />
-              <div className="absolute inset-0 flex flex-col justify-between p-3">
-                <div className="text-[9px] uppercase tracking-widest text-primary">{p.tag}</div>
-                <div>
-                  <div className="display-font text-base uppercase leading-tight">{p.title}</div>
-                  <div className="mt-2 inline-flex items-center gap-1 text-[10px] uppercase tracking-widest opacity-70 group-hover:opacity-100 group-hover:text-primary transition">
-                    Watch ▶
-                  </div>
-                </div>
+        {tab === "instagram" && (
+          <>
+            {igEmpty ? (
+              <EmptyState
+                platform="Instagram"
+                handle={SOCIAL_HANDLES.instagram}
+                profileUrl={`https://instagram.com/${SOCIAL_HANDLES.instagram}`}
+                hint="Add Instagram post URLs to src/config/socialPosts.ts"
+              />
+            ) : (
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                {INSTAGRAM_POSTS.map((url) => (
+                  <InstagramEmbed key={url} url={url} />
+                ))}
               </div>
-              <div className="absolute inset-0 ring-1 ring-inset ring-foreground/0 group-hover:ring-primary/60 transition" />
-            </motion.a>
-          ))}
+            )}
+          </>
+        )}
+
+        {tab === "tiktok" && (
+          <>
+            {ttEmpty ? (
+              <EmptyState
+                platform="TikTok"
+                handle={SOCIAL_HANDLES.tiktok}
+                profileUrl={`https://tiktok.com/@${SOCIAL_HANDLES.tiktok}`}
+                hint="Add TikTok video URLs to src/config/socialPosts.ts"
+              />
+            ) : (
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                {TIKTOK_POSTS.map((p) => (
+                  <TikTokEmbed key={p.videoId} url={p.url} videoId={p.videoId} />
+                ))}
+              </div>
+            )}
+          </>
+        )}
+
+        <div className="mt-10 flex flex-wrap gap-3 justify-center">
+          <a
+            href={`https://instagram.com/${SOCIAL_HANDLES.instagram}`}
+            target="_blank"
+            rel="noreferrer"
+            className="border border-border px-5 py-3 text-xs uppercase tracking-widest hover:border-primary hover:text-primary transition-colors"
+          >
+            Follow @{SOCIAL_HANDLES.instagram} · Instagram
+          </a>
+          <a
+            href={`https://tiktok.com/@${SOCIAL_HANDLES.tiktok}`}
+            target="_blank"
+            rel="noreferrer"
+            className="border border-border px-5 py-3 text-xs uppercase tracking-widest hover:border-primary hover:text-primary transition-colors"
+          >
+            Follow @{SOCIAL_HANDLES.tiktok} · TikTok
+          </a>
         </div>
       </div>
     </section>
   );
 };
+
+const EmptyState = ({
+  platform,
+  handle,
+  profileUrl,
+  hint,
+}: {
+  platform: string;
+  handle: string;
+  profileUrl: string;
+  hint: string;
+}) => (
+  <div className="border border-dashed border-border bg-card p-12 text-center">
+    <div className="display-font text-3xl uppercase">{platform} feed ready</div>
+    <p className="text-muted-foreground mt-3 max-w-md mx-auto text-sm">
+      {hint}. Posts will appear here as a playable grid.
+    </p>
+    <a
+      href={profileUrl}
+      target="_blank"
+      rel="noreferrer"
+      className="mt-6 inline-flex items-center gap-2 bg-primary text-primary-foreground px-5 py-3 text-xs uppercase tracking-widest font-semibold hover:bg-primary/90 transition-colors"
+    >
+      Visit @{handle} →
+    </a>
+  </div>
+);
 
 export default Social;
