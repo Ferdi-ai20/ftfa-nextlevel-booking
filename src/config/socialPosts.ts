@@ -4,8 +4,8 @@
 // TikTok: copy the video URL, e.g. https://www.tiktok.com/@ftfa/video/7300000000000000000
 
 export const SOCIAL_HANDLES = {
-  instagram: "ftfa",
-  tiktok: "ftfa",
+  instagram: "ftfa.academy",
+  tiktok: "ftfa.academy",
 };
 
 export const INSTAGRAM_POSTS: string[] = [
