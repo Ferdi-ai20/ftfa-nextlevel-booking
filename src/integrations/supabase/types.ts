@@ -14,16 +14,176 @@ export type Database = {
   }
   public: {
     Tables: {
-      [_ in never]: never
+      app_settings: {
+        Row: {
+          active_time_slots: string[]
+          closed_message: string
+          id: number
+          updated_at: string
+          waitlist_open: boolean
+        }
+        Insert: {
+          active_time_slots?: string[]
+          closed_message?: string
+          id?: number
+          updated_at?: string
+          waitlist_open?: boolean
+        }
+        Update: {
+          active_time_slots?: string[]
+          closed_message?: string
+          id?: number
+          updated_at?: string
+          waitlist_open?: boolean
+        }
+        Relationships: []
+      }
+      fixed_players: {
+        Row: {
+          active: boolean
+          created_at: string
+          id: string
+          name: string
+          notes: string | null
+          phone: string
+          slot_day: string
+          slot_time: string
+        }
+        Insert: {
+          active?: boolean
+          created_at?: string
+          id?: string
+          name: string
+          notes?: string | null
+          phone: string
+          slot_day?: string
+          slot_time: string
+        }
+        Update: {
+          active?: boolean
+          created_at?: string
+          id?: string
+          name?: string
+          notes?: string | null
+          phone?: string
+          slot_day?: string
+          slot_time?: string
+        }
+        Relationships: []
+      }
+      user_roles: {
+        Row: {
+          created_at: string
+          id: string
+          role: Database["public"]["Enums"]["app_role"]
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          role: Database["public"]["Enums"]["app_role"]
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          role?: Database["public"]["Enums"]["app_role"]
+          user_id?: string
+        }
+        Relationships: []
+      }
+      waitlist: {
+        Row: {
+          age: number | null
+          club: string | null
+          created_at: string
+          id: string
+          level: string | null
+          name: string
+          other_availability: string | null
+          phone: string
+          preferred_slots: string[]
+          status: string
+        }
+        Insert: {
+          age?: number | null
+          club?: string | null
+          created_at?: string
+          id?: string
+          level?: string | null
+          name: string
+          other_availability?: string | null
+          phone: string
+          preferred_slots?: string[]
+          status?: string
+        }
+        Update: {
+          age?: number | null
+          club?: string | null
+          created_at?: string
+          id?: string
+          level?: string | null
+          name?: string
+          other_availability?: string | null
+          phone?: string
+          preferred_slots?: string[]
+          status?: string
+        }
+        Relationships: []
+      }
+      weekly_attendance: {
+        Row: {
+          available_from: string | null
+          available_to: string | null
+          created_at: string
+          fixed_player_id: string
+          id: string
+          session_date: string
+          status: string
+        }
+        Insert: {
+          available_from?: string | null
+          available_to?: string | null
+          created_at?: string
+          fixed_player_id: string
+          id?: string
+          session_date: string
+          status: string
+        }
+        Update: {
+          available_from?: string | null
+          available_to?: string | null
+          created_at?: string
+          fixed_player_id?: string
+          id?: string
+          session_date?: string
+          status?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "weekly_attendance_fixed_player_id_fkey"
+            columns: ["fixed_player_id"]
+            isOneToOne: false
+            referencedRelation: "fixed_players"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Views: {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      has_role: {
+        Args: {
+          _role: Database["public"]["Enums"]["app_role"]
+          _user_id: string
+        }
+        Returns: boolean
+      }
     }
     Enums: {
-      [_ in never]: never
+      app_role: "admin" | "user"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -150,6 +310,8 @@ export type CompositeTypes<
 
 export const Constants = {
   public: {
-    Enums: {},
+    Enums: {
+      app_role: ["admin", "user"],
+    },
   },
 } as const
