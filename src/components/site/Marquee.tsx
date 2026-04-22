@@ -1,13 +1,13 @@
 const Marquee = () => {
   const items = [
-    "Techniek",
-    "Voetbalvisie",
-    "Mentaliteit",
-    "BVO Voorbereiding",
+    "Technique",
+    "Football Vision",
+    "Mentality",
+    "Pro Club Prep",
     "1-on-1",
     "Discipline",
     "Performance",
-    "Intensiteit",
+    "Intensity",
   ];
   const list = [...items, ...items, ...items];
 

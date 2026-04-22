@@ -22,10 +22,10 @@ const programs = [
   },
   {
     n: "03",
-    title: "BVO Preparation",
+    title: "Pro Club Preparation",
     level: "Pro Pathway · Selective",
-    desc: "Multi-week program for players ready to step into professional youth academies.",
-    outcomes: ["Pro-club methodology", "Trial-day preparation", "Mental & physical conditioning"],
+    desc: "Multi-week program for players ready to step into professional youth academies. Football vision, mentality, and pro-club methodology.",
+    outcomes: ["Football vision & game IQ", "Mentality & resilience training", "Trial-day preparation"],
     image: img3,
   },
 ];
