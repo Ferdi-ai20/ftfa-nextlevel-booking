@@ -20,7 +20,8 @@ const Nav = () => {
           <a href="#about" className="text-muted-foreground hover:text-foreground transition-colors">About</a>
           <a href="#programs" className="text-muted-foreground hover:text-foreground transition-colors">Programs</a>
           <a href="#coach" className="text-muted-foreground hover:text-foreground transition-colors">Coach</a>
-          <a href="#booking" className="text-muted-foreground hover:text-foreground transition-colors">Booking</a>
+          <a href="#booking" className="text-muted-foreground hover:text-foreground transition-colors">Waitlist</a>
+          <a href="#sunday" className="text-muted-foreground hover:text-foreground transition-colors">My Slot</a>
           <a href="#contact" className="text-muted-foreground hover:text-foreground transition-colors">Contact</a>
         </nav>
         <a
