@@ -346,6 +346,24 @@ const SundayPlanning = () => {
                     {s.player?.phone && (
                       <div className="text-xs text-muted-foreground truncate">{s.player.phone}</div>
                     )}
+                    {(() => {
+                      const r = reminderTagFor(s.player_id);
+                      if (!r || (!r.first && !r.final)) return null;
+                      return (
+                        <div className="mt-1 flex flex-wrap gap-1">
+                          {r.first && (
+                            <span className="text-[10px] uppercase tracking-widest border border-border bg-secondary/40 text-muted-foreground px-1.5 py-0.5">
+                              ✉ Mon
+                            </span>
+                          )}
+                          {r.final && (
+                            <span className="text-[10px] uppercase tracking-widest border border-border bg-secondary/40 text-muted-foreground px-1.5 py-0.5">
+                              ✉ Wed
+                            </span>
+                          )}
+                        </div>
+                      );
+                    })()}
                   </div>
                   <div className="lg:col-span-3 min-w-0">
                     <div className="flex items-center gap-2 flex-wrap">
