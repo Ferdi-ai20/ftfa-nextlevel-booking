@@ -23,6 +23,7 @@ const Approvals = () => {
   const [unlinkedPlayers, setUnlinkedPlayers] = useState<Player[]>([]);
   const [loading, setLoading] = useState(true);
   const [linking, setLinking] = useState<Profile | null>(null);
+  const [viewing, setViewing] = useState<Profile | null>(null);
   const [search, setSearch] = useState("");
 
   const load = async () => {
