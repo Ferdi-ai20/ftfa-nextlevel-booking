@@ -1,69 +1,50 @@
 
 
-## Plan: Knoppen werkend maken + admin ziet de keuze + mobiel hamburgermenu weg
+## Plan: Woensdag-deadline terug + email-reminder (geen WhatsApp)
 
-Drie gerichte fixes.
+Twee delen, allebei klein.
 
 ---
 
-### 1. Attendance-knoppen werken niet → fixen
+### 1. Woensdag 20:00 deadline terug aanzetten
 
-De knoppen op `/dashboard` reageren niet of de keuze wordt niet opgeslagen. Oorzaak ligt waarschijnlijk in `respond()` in `src/pages/Dashboard.tsx`: de upsert op `weekly_confirmations` mist een unieke constraint op (`player_id`, `session_date`), waardoor `upsert` faalt of een nieuwe rij maakt zonder dat de UI hem toont.
+In `src/pages/Dashboard.tsx` is de `locked`/deadline-check uitgezet (knoppen werken nu na deadline). Terugdraaien:
 
-Wijzigingen:
+- `respond()` blokkeert opnieuw zodra `isPastDeadline(sunday)` true is, met toast: *"Deadline passed (Wednesday 20:00). Contact your coach to change your response."*
+- Knoppen *Attending / Not attending / Different time* worden weer `disabled` na woensdag 20:00.
+- Banner bovenaan toont weer rood: *"Deadline passed — contact your coach"* in plaats van *"late responses still accepted"*.
+- Het *"My preferred training time"*-blok blijft wél altijd bewerkbaar (heeft niets met de weekdeadline te maken).
 
-- **DB-migratie**: unieke index toevoegen op `weekly_confirmations(player_id, session_date)` zodat `upsert({ onConflict: "player_id,session_date" })` betrouwbaar werkt.
-- **`Dashboard.tsx` → `respond()`**: expliciet eerst `select` doen op bestaande rij voor (player_id, session_date); als die bestaat → `update` op `id`, anders `insert`. Geen `upsert` meer. Direct lokale state bijwerken na succes (geen `loadAll()` reload).
-- Toast bij elke klik: succes ("Response saved") of fout met de echte foutmelding (nu wordt fout stil weggeslikt).
-- Knoppen krijgen `disabled` state tijdens de request zodat dubbelklik geen race veroorzaakt.
-- "Different time" knop opent nu het inline-formulier én slaat status `different_time` direct op zodra op "Save" wordt geklikt (alt_from / alt_to / note worden meegestuurd in dezelfde rij).
+De deadline-logica in `src/lib/dates.ts` (`deadlineFor` = woensdag 20:00 vóór de zondag) blijft zoals hij is.
 
-### 2. Admin ziet de keuze van de speler niet
+### 2. Email-reminder bevestigen + handmatige trigger
 
-In `src/pages/admin/SundayPlanning.tsx` worden alleen `weekly_confirmations` van spelers met een `fixed_sunday_slot` getoond. Bovendien wordt de pagina niet realtime ververst — de admin moet handmatig herladen.
+De email-reminder via `send-sunday-reminders` bestaat al en draait via cron (ma 17:00 + wo 14:00). De `sunday-reminder` template is gekoppeld. Wat er ontbreekt:
 
-Wijzigingen:
+- **Spelers zonder fixed slot worden overgeslagen.** De edge function leest alleen uit `fixed_sunday_slots`. Uitbreiden: ook spelers zonder fixed slot meenemen als ze een `preferred_time_from` hebben gezet (en nog niet hebben gereageerd voor de komende zondag). Voor die spelers wordt `slotTime` weggelaten of vervangen door hun voorkeurstijd.
+- **Handmatige knop "Send reminders now"** in `src/pages/admin/SundayPlanning.tsx`: roept `send-sunday-reminders` direct aan met checkbox *"Final reminder"* (zet `isFinal: true`). Toont resultaat als toast: `sent: X, skipped: Y`.
+- **Reminder-status per speler** in `SundayPlanning.tsx`: kleine grijze tag *"Reminder sent ma 17:00"* / *"wo 14:00"* op basis van `email_send_log` waar `template_name='sunday-reminder'` en de `idempotencyKey` de `session_date` + `userId` bevat. Zo zie je per ouder of de mail eruit is.
+- **Betere logging** in `send-sunday-reminders/index.ts`: per parent een console-regel met `email + status (sent/skipped + reason)` zodat we in de Edge Function logs kunnen zien wie wel/niet bereikt is.
 
-- **Realtime subscription** op `weekly_confirmations` in `SundayPlanning.tsx`: bij elke INSERT/UPDATE voor de huidige `session_date` direct de lokale `confirms` state bijwerken.
-- Migratie: `ALTER PUBLICATION supabase_realtime ADD TABLE public.weekly_confirmations;` en `ALTER TABLE public.weekly_confirmations REPLICA IDENTITY FULL;`.
-- Per slot tonen: huidige status badge + (bij `different_time`) het tijdvoorstel `alt_from–alt_to` en `note` direct zichtbaar onder de naam, niet pas na klik.
-- "Last updated" timestamp tonen zodat de admin ziet wanneer een ouder reageerde.
+Geen Twilio, geen WhatsApp, geen extra connector nodig — puur Lovable Emails (al ingericht).
 
-### 3. Hamburgermenu (drie streepjes) op mobiel weghalen
+### 3. Wat blijft hetzelfde
 
-In `src/pages/admin/AdminShell.tsx` staat nu een hamburger + Sheet drawer. Vervangen door een altijd-zichtbare horizontale tab-bar bovenaan op mobiel.
-
-Wijzigingen in `AdminShell.tsx`:
-
-- Sheet/hamburger volledig verwijderen.
-- Mobiele header wordt: FTFA-titel + horizontaal scrollbare tab-rij met alle 7 admin-links direct zichtbaar (geen klik nodig om te openen).
-- Approvals-link houdt de count badge (rood bolletje met aantal).
-- Sign out wordt een kleine knop rechts in de mobiele header.
-- Desktop sidebar blijft ongewijzigd.
-
-Layout mobiel:
-
-```text
-┌─────────────────────────────────────┐
-│ FTFA Admin              [Sign out]  │
-├─────────────────────────────────────┤
-│ Sunday│Players│Approvals③│Fixed│... │ ← horizontaal scrollbaar
-└─────────────────────────────────────┘
-```
+- Realtime subscription op `weekly_confirmations` in admin (al gedaan vorige loop).
+- Mobiele tab-bar in admin (al gedaan).
+- Voorkeurtijd-blok op het dashboard (al gedaan).
+- `sunday-reminder` email template (geen wijzigingen nodig).
 
 ---
 
 ### Technische details
 
 **Files:**
-- `src/pages/Dashboard.tsx` — `respond()` herschrijven (select-then-update/insert), toasts, disabled state, optimistic update.
-- `src/pages/admin/SundayPlanning.tsx` — realtime subscription, alt-tijd/note inline tonen.
-- `src/pages/admin/AdminShell.tsx` — hamburger weg, horizontale tab-bar terug op mobiel.
+- `src/pages/Dashboard.tsx` — deadline-check terug in `respond()`, banner-tekst, knoppen `disabled` na deadline.
+- `src/pages/admin/SundayPlanning.tsx` — knop *"Send reminders now"* + checkbox *"Final reminder"*, reminder-status tag per speler op basis van `email_send_log`.
+- `supabase/functions/send-sunday-reminders/index.ts` — ook spelers zonder fixed slot meenemen indien `preferred_time_from` gezet, betere per-recipient logging.
 
-**DB-migraties:**
-- `CREATE UNIQUE INDEX weekly_confirmations_player_session_uniq ON public.weekly_confirmations (player_id, session_date);`
-- `ALTER TABLE public.weekly_confirmations REPLICA IDENTITY FULL;`
-- `ALTER PUBLICATION supabase_realtime ADD TABLE public.weekly_confirmations;`
+**Edge function deploy:** `send-sunday-reminders` wordt opnieuw uitgerold na de wijziging.
 
-Geen edge-function changes, geen email-changes (komen later).
+**Geen DB-migraties, geen nieuwe templates, geen secrets nodig.**
 
