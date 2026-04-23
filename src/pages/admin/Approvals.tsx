@@ -205,6 +205,54 @@ const Approvals = () => {
           </div>
         </div>
       )}
+
+      {viewing && (
+        <div className="fixed inset-0 z-50 bg-background/80 backdrop-blur grid place-items-center p-4 overflow-auto">
+          <div className="bg-card border border-border w-full max-w-lg p-6 space-y-4">
+            <div className="flex items-center justify-between">
+              <div className="display-font text-2xl uppercase">Signup details</div>
+              <button
+                onClick={() => setViewing(null)}
+                className="text-xs uppercase tracking-widest text-muted-foreground hover:text-foreground"
+              >
+                ✕ Close
+              </button>
+            </div>
+            <dl className="text-sm space-y-3">
+              <div>
+                <dt className="text-[10px] uppercase tracking-widest text-muted-foreground">Name</dt>
+                <dd>{viewing.full_name || "—"}</dd>
+              </div>
+              <div>
+                <dt className="text-[10px] uppercase tracking-widest text-muted-foreground">Phone</dt>
+                <dd>{viewing.phone || "—"}</dd>
+              </div>
+              <div>
+                <dt className="text-[10px] uppercase tracking-widest text-muted-foreground">Signed up</dt>
+                <dd>{new Date(viewing.created_at).toLocaleString()}</dd>
+              </div>
+              <div>
+                <dt className="text-[10px] uppercase tracking-widest text-muted-foreground">User ID</dt>
+                <dd className="font-mono text-xs break-all">{viewing.id}</dd>
+              </div>
+            </dl>
+            <div className="flex gap-2 pt-2 border-t border-border">
+              <button
+                onClick={() => { const p = viewing; setViewing(null); rejectProfile(p); }}
+                className="flex-1 text-xs uppercase tracking-widest border border-destructive/40 text-destructive py-2.5 hover:bg-destructive/10"
+              >
+                Reject
+              </button>
+              <button
+                onClick={() => { setLinking(viewing); setViewing(null); }}
+                className="flex-1 bg-primary text-primary-foreground py-2.5 text-xs uppercase tracking-widest font-semibold hover:bg-primary/90"
+              >
+                Approve & link →
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
