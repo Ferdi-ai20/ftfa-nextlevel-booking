@@ -9,6 +9,7 @@ import Auth from "./pages/Auth.tsx";
 import ResetPassword from "./pages/ResetPassword.tsx";
 import Dashboard from "./pages/Dashboard.tsx";
 import WaitlistPage from "./pages/WaitlistPage.tsx";
+import Unsubscribe from "./pages/Unsubscribe.tsx";
 import AdminShell from "./pages/admin/AdminShell.tsx";
 import SundayPlanning from "./pages/admin/SundayPlanning.tsx";
 import Players from "./pages/admin/Players.tsx";
@@ -33,6 +34,7 @@ const App = () => (
             <Route path="/reset-password" element={<ResetPassword />} />
             <Route path="/dashboard" element={<Dashboard />} />
             <Route path="/waitlist" element={<WaitlistPage />} />
+            <Route path="/unsubscribe" element={<Unsubscribe />} />
             <Route path="/admin" element={<AdminShell />}>
               <Route index element={<SundayPlanning />} />
               <Route path="players" element={<Players />} />

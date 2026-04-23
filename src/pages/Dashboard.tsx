@@ -5,6 +5,7 @@ import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { ageFromBirthdate, deadlineFor, fmtSunday, isPastDeadline, isoDate, nextSunday } from "@/lib/dates";
+import ParentBooking from "@/components/site/ParentBooking";
 
 type Player = {
   id: string;
@@ -166,6 +167,9 @@ const Dashboard = () => {
             return <PlayerCard key={p.id} player={p} slot={slot} confirmation={cf} locked={locked} onRespond={respond} />;
           })
         )}
+
+        {/* Available bookings */}
+        <ParentBooking />
 
         {/* History */}
         {players.length > 0 && (
