@@ -237,10 +237,81 @@ const Dashboard = () => {
             </button>
           </div>
         </section>
+
+        {/* Player profiles (read-only) with request changes */}
+        {players.length > 0 && (
+          <section>
+            <h2 className="display-font text-3xl uppercase mb-6">Player details</h2>
+            <div className="grid md:grid-cols-2 gap-4">
+              {players.map((p) => (
+                <div key={p.id} className="bg-card border border-border p-6 space-y-3">
+                  <div className="display-font text-xl uppercase">{p.player_name}</div>
+                  <dl className="text-sm space-y-1.5">
+                    <Row label="Club" value={p.club} />
+                    <Row label="Team" value={p.team} />
+                    <Row label="Level" value={p.level} />
+                    <Row label="Position" value={p.position} />
+                  </dl>
+                  <button
+                    onClick={() => setRequestPlayerId(p.id)}
+                    className="text-[11px] uppercase tracking-widest border border-border px-4 py-2 hover:border-foreground/40"
+                  >
+                    Request changes
+                  </button>
+                </div>
+              ))}
+            </div>
+          </section>
+        )}
       </div>
+
+      {/* Request changes modal */}
+      {requestPlayerId && (
+        <div className="fixed inset-0 z-50 bg-background/80 backdrop-blur grid place-items-center p-4">
+          <div className="bg-card border border-border w-full max-w-md p-6 space-y-4">
+            <div className="flex items-center justify-between">
+              <div className="display-font text-xl uppercase">Request changes</div>
+              <button onClick={() => setRequestPlayerId(null)} className="text-xs uppercase">✕</button>
+            </div>
+            <p className="text-xs text-muted-foreground">
+              Tell your coach what should change in your player profile (club, team, contact info, etc.).
+            </p>
+            <textarea
+              value={requestText}
+              onChange={(e) => setRequestText(e.target.value)}
+              rows={5}
+              maxLength={500}
+              placeholder="e.g. New club: Ajax U15, position changed to CAM."
+              className="w-full bg-background border border-border px-3 py-2 focus:border-primary focus:outline-none"
+            />
+            <div className="flex gap-2">
+              <button
+                onClick={() => setRequestPlayerId(null)}
+                className="flex-1 border border-border px-4 py-2.5 text-xs uppercase tracking-widest"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={submitRequest}
+                disabled={!requestText.trim()}
+                className="flex-1 bg-primary text-primary-foreground px-4 py-2.5 text-xs uppercase tracking-widest font-semibold disabled:opacity-40"
+              >
+                Send
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </main>
   );
 };
+
+const Row = ({ label, value }: { label: string | null; value: string | null }) => (
+  <div className="flex justify-between gap-4">
+    <dt className="text-muted-foreground text-xs uppercase tracking-widest">{label}</dt>
+    <dd className="text-right">{value || <span className="text-muted-foreground">—</span>}</dd>
+  </div>
+);
 
 const StatusBadge = ({ status }: { status: Confirmation["status"] }) => {
   const map = {
