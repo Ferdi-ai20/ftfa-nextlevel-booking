@@ -1,83 +1,92 @@
 
 
-## Plan: Mobiele verbeteringen, waitlist-form fix, player linking & Calendly koppeling
+## Plan: Copy refresh, white accent color, club logos, WhatsApp link & approvals guidance
 
-Vier losse fixes/features in één ronde.
-
----
-
-### 1. Waitlist form — input verliest focus bij elke toets
-
-**Oorzaak:** `Field` en `Wrapper` zijn binnen `WaitlistForm` gedefinieerd. Bij elke keystroke maakt React nieuwe componenten → React unmount/remount alle inputs → focus weg.
-
-**Fix:** `Field` en `Wrapper` buiten de component verplaatsen (op module-niveau), zodat ze stabiel zijn tussen renders. Geen gedragsverandering, alleen stabiele referenties.
+Five focused changes.
 
 ---
 
-### 2. Mobiele bruikbaarheid + zichtbare Sign-in knop
+### 1. Shorter, punchier copy + Dutch → English
 
-Huidige `Nav.tsx`: "Sign in" en "Join Waitlist" zijn `hidden sm:inline-flex` → onzichtbaar op telefoon. Geen hamburger menu.
+Replace verbose lines and translate remaining Dutch words:
 
-**Fix:**
-- **Mobiel hamburger menu** (Sheet) met alle nav-links + **Sign in** + **Join Waitlist** prominent.
-- "Sign in" knop ook standaard zichtbaar in de header (kleine icon-variant) op mobiel.
-- `StickyCTA` bottom-bar uitbreiden: naast "Book Training" ook een "Sign in" link voor niet-ingelogde gebruikers.
-- Tap targets vergroten naar min. 44px, container padding op mobiel checken.
-- Quick mobile pass op Dashboard en Admin (tabellen → kaarten op klein scherm waar nodig).
+- **Hero** (`Hero.tsx`)
+  - Subheadline: `"For players who want to reach BVO level. High-level techniektraining and intuïtieve voetbalvisie — built for serious players only."`
+  - → `"Built for players chasing pro level. Elite football technique and game intelligence — nothing else."`
 
----
+- **About** (`About.tsx`)
+  - Lead: `"FTFA is the football academy of Ferdi Tarhan — built around one obsession: developing technical execution and intuitive game intelligence at the highest level."`
+  - → `"FTFA is Ferdi Tarhan's academy. One obsession: technical execution and game intelligence at the highest level."`
+  - Second paragraph: replace `techniektraining` / `intuïtieve voetbalvisie` and shorten:
+  - → `"A methodology unique in the Netherlands. Football technique plus intuitive game vision — players who think, decide and execute faster. No fluff."`
+  - Stat tiles: `Techniek / Visie / Mentaliteit` → **Technique / Vision / Mentality**.
 
-### 3. "Speler goedkeuren en koppelen" — waar doe je dat?
+- **CTA** (`CTA.tsx`)
+  - Subheadline → `"If you want entertainment, look elsewhere. If you want the next level — apply."`
 
-Op dit moment: een ouder die zich registreert heeft géén `players` rij. De koppeling moet handmatig in `/admin/players` via "Edit" → veld `parent_user_id` invullen. Dat veld bestaat nu **niet** in de edit-form, dus koppelen is feitelijk onmogelijk vanuit de UI.
+- **Coach** (`Coach.tsx`)
+  - First paragraph shortened: `"A decade obsessed with football technique and tactics. FTFA exists to give Dutch talent a methodology that produces real top-level players."`
+  - **Remove the "UEFA Certified" stat tile.** Replace with `{ k: "200+", v: "Players Trained" }` so the row stays balanced (3 tiles: 10+ Years / 200+ Players / NL Based).
 
-**Fix — nieuwe Admin tab "Approvals" + linking UI:**
-
-1. **`/admin/approvals`** (nieuwe pagina, link in sidebar):
-   - Lijst van alle geregistreerde users (`profiles`) die nog **geen** gekoppelde player hebben.
-   - Per rij: naam, email, telefoon, signup datum.
-   - Knop **"Link to player…"** → opent dropdown met alle bestaande players zonder `parent_user_id` + zoekveld + knop "Create new player from this account".
-   - Knop **"Promote from waitlist"** → laat waitlist entries zien die matchen op email/telefoon, één klik koppelt + maakt player aan.
-
-2. **`/admin/players` edit-form uitbreiden** met een "Linked parent account" sectie:
-   - Toont huidige link (email) of "Not linked".
-   - Zoek-dropdown om een user te koppelen/ontkoppelen.
-
-3. **Notificatie** (optioneel email): wanneer admin een player koppelt, krijgt de ouder een welcome-mail "Je bent nu actief, log in op /dashboard".
-
-**Database:** geen schema wijzigingen nodig. Wel een nieuwe RLS-policy zodat admin alle `profiles` mag lezen (bestaat al: "Admins view all profiles" ✅).
+- **Programs** (`Programs.tsx`) — tighten the section intro:
+  - → `"One principle across every program: only what produces real progression."`
 
 ---
 
-### 4. Calendly koppelen aan trainingen
+### 2. Color: replace primary green/lime accent with white
 
-Twee niveaus mogelijk; ik stel **niveau B** voor (lichte integratie, geen complete vervanging van eigen booking system).
+Currently `--primary: 70 100% 50%` (lime). Change to white so all `text-primary`, `bg-primary`, `border-primary`, ring, gradients automatically follow.
 
-**Niveau B — Calendly als externe boekings-link per trainingstype:**
+In `src/index.css`:
+- `--primary: 0 0% 98%;`
+- `--primary-foreground: 0 0% 4%;` (already correct — black text on white button)
+- `--accent: 0 0% 98%;`
+- `--ring: 0 0% 98%;`
+- `--gradient-radial`: change lime tint to white tint (very low opacity, e.g. `hsl(0 0% 100% / 0.06)`).
+- `--shadow-glow`: change to white glow `0 0 60px hsl(0 0% 100% / 0.15)`.
 
-- **Settings tab**: invoervelden voor Calendly URLs per training type:
-  - 1-on-1 training URL
-  - Duo training URL
-  - Group training URL
-  - Trial training URL
-  - Optioneel: per booking window een eigen Calendly link.
-- **Parent dashboard** "Available bookings" sectie: naast eigen ParentBooking-flow een knop **"Book via Calendly"** die opent in nieuwe tab met de juiste URL per trainingstype van de speler.
-- **Calendly webhook** (edge function `calendly-webhook`):
-  - Endpoint dat `invitee.created` + `invitee.canceled` events ontvangt.
-  - Matcht op email → vindt `players.parent_user_id` → schrijft een rij in `bookings` (of nieuwe `external_bookings` tabel) met datum/tijd, type, calendly_event_uri.
-  - Stuurt automatisch een booking-confirmation email (bestaande template).
-- **Admin Sunday Planning** toont Calendly-bookings naast eigen slots, met badge "via Calendly".
-- Setup vereist: Calendly **Personal Access Token** (Calendly Pro/Teams account nodig voor webhooks) → opslaan als secret `CALENDLY_API_TOKEN`. Ik vraag deze pas wanneer we hier zijn.
-
-**Database:** nieuwe tabel `external_bookings` (id, source='calendly', user_id, player_id, event_uri uniek, scheduled_at, training_type, status, raw payload jsonb).
+Effect: all green accents (numbers, dots, arrows, buttons, hover borders) become white. No component edits needed beyond the token swap.
 
 ---
 
-### Build-volgorde
+### 3. Club logos in "Players placed at" strip
 
-1. Fix waitlist form re-render bug (5 min).
-2. Mobiele nav + sticky CTA + sign-in zichtbaarheid.
-3. Admin Approvals pagina + player↔user linking UI.
-4. Calendly: Settings velden + dashboard knoppen + webhook + tabel.
-5. QA pass mobiel (375px) op alle key flows.
+Currently `Proof.tsx` renders club names as text. Replace with real logos.
+
+- Add SVG logos for: Ajax, PSV, Feyenoord, AZ, FC Utrecht, Vitesse, FC Twente, Heerenveen — sourced as inline SVG components in a new file `src/components/site/ClubLogos.tsx` (or as `/public/clubs/{name}.svg` files). Use Wikimedia public-domain wordmarks where available; fall back to clean monochrome wordmark SVGs we generate ourselves.
+- Update `Proof.tsx` clubs strip: render each as a grayscale logo (`opacity-60 hover:opacity-100`), height ~36px, uniform spacing. Remove text fallback.
+- Note on rights: club logos are trademarked; we'll display them small, monochrome, in a neutral "alumni placement" context. Recommend the user replace with their own approved logo set if they have one.
+
+---
+
+### 4. WhatsApp "Message Us" → +31 6 21275348
+
+In `Footer.tsx`, change:
+- `href="https://wa.me/31600000000"` → `href="https://wa.me/31621275348"`
+- Add a small line under "Message Us": `+31 6 21275348` so the number is visible.
+- Same update in `StickyCTA` if it links WhatsApp.
+
+---
+
+### 5. "Where do I approve new signups?" — make it discoverable
+
+The flow already exists at **Admin → Approvals** (`/admin/approvals`), but the welcome email tells parents the coach must approve, without telling the coach where. Two small additions:
+
+- **Admin sidebar badge**: in `AdminShell.tsx`, fetch the count of unlinked profiles and show a small numeric badge next to the "Approvals" link (e.g. `Approvals (3)`) so you immediately see pending signups when you log in.
+- **Admin header banner**: on `/admin` (any page), if pending approvals > 0, show a top banner: `"3 new parent signups waiting for approval → Review"` linking to `/admin/approvals`.
+- **In-app explanation** on the Approvals page header: add one line — `"New parent signups land here. Link them to a player to grant /dashboard access."` (already partially there — keep wording consistent.)
+
+No database changes. No new routes — just surfacing the existing page.
+
+---
+
+### Files touched
+
+- `src/index.css` (color tokens)
+- `src/components/site/Hero.tsx`, `About.tsx`, `CTA.tsx`, `Coach.tsx`, `Programs.tsx` (copy)
+- `src/components/site/Proof.tsx` + new `ClubLogos.tsx` or `/public/clubs/*.svg`
+- `src/components/site/Footer.tsx` + `StickyCTA.tsx` (WhatsApp number)
+- `src/pages/admin/AdminShell.tsx` (sidebar badge + header banner)
+
+No DB migrations, no edge functions.
 
