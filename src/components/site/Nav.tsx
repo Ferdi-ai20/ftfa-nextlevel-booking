@@ -43,9 +43,9 @@ const Nav = () => {
           {isAdmin && (
             <a
               href="/admin/approvals"
-              className="hidden sm:inline-flex items-center gap-1.5 text-xs uppercase tracking-widest text-primary hover:text-foreground px-3 py-2 border border-primary/40 hover:border-primary"
+              className="hidden sm:inline-flex items-center gap-1 text-[10px] uppercase tracking-wider text-primary hover:text-foreground px-2 py-1.5 border border-primary/40 hover:border-primary"
             >
-              <ShieldCheck className="h-3.5 w-3.5" />
+              <ShieldCheck className="h-3 w-3" />
               Approvals
             </a>
           )}
