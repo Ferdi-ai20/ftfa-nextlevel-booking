@@ -1,187 +1,83 @@
 
 
-# Plan: FTFA Academy — Full CRM, Waitlist & Controlled Booking System
+## Plan: Mobiele verbeteringen, waitlist-form fix, player linking & Calendly koppeling
 
-This expands the current site into a complete control-panel for your academy. The marketing site stays public; everything operational moves behind logins.
-
----
-
-## 1. User accounts & roles
-
-Two roles, both via email + password (with Google sign-in as an option for parents):
-
-- **Admin** — you. Full access to `/admin`.
-- **Parent/Player** — can create an account, log in at `/dashboard`, and see only their own data.
-
-A `profiles` table stores name + role link. Roles live in the existing `user_roles` table (admin role only — parents are inferred by absence of admin role).
+Vier losse fixes/features in één ronde.
 
 ---
 
-## 2. Parent/Player dashboard (`/dashboard`)
+### 1. Waitlist form — input verliest focus bij elke toets
 
-What a logged-in parent sees:
+**Oorzaak:** `Field` en `Wrapper` zijn binnen `WaitlistForm` gedefinieerd. Bij elke keystroke maakt React nieuwe componenten → React unmount/remount alle inputs → focus weg.
 
-- **Their fixed Sunday slot** (e.g. "Sunday 27 April · 14:00–15:00") — only if you assigned them one.
-- **This week's response card** with three buttons:
-  1. **Attending**
-  2. **Not attending**
-  3. **Available at a different time** → opens fields for alternative time ranges + optional note.
-- **Deadline banner**: "Respond before Wednesday 20:00." After the deadline, the form locks and shows *"Locked — contact coach to change"*. You can override from admin.
-- **History**: previous weeks' responses (last 8 weeks).
-- **Their player profile** (read-only): club, team, level, position, contact info — with a "request changes" button that flags it for you.
+**Fix:** `Field` en `Wrapper` buiten de component verplaatsen (op module-niveau), zodat ze stabiel zijn tussen renders. Geen gedragsverandering, alleen stabiele referenties.
 
 ---
 
-## 3. Sunday confirmation system (admin side)
+### 2. Mobiele bruikbaarheid + zichtbare Sign-in knop
 
-Admin tab **"Sunday Planning"** (replaces current *This Sunday*):
+Huidige `Nav.tsx`: "Sign in" en "Join Waitlist" zijn `hidden sm:inline-flex` → onzichtbaar op telefoon. Geen hamburger menu.
 
-- Picks the upcoming Sunday automatically; arrow buttons to look at future weeks.
-- Table: time slot · player · status badge · alternative availability · note.
-- Color coding: green = attending, red = absent (slot freed), amber = different time, grey = no response.
-- **Highlight freed slots** at the top: "2 slots open this Sunday: 14:00, 15:00".
-- One-click WhatsApp reminders for non-responders.
-- Admin can override any response (e.g. mark a no-response as confirmed manually).
-
----
-
-## 4. Waitlist system — expanded form
-
-Public page `/waitlist` (also embedded on home page) — the form gets all the fields you listed:
-
-- Player name, parent name, phone, email
-- Birthdate (we compute age automatically)
-- Club, team, position
-- Level dropdown: **BVO, Divisie, Hoofdklasse, Eerste klasse, Recreatief**
-- Preferred training type: **1-on-1 / Duo / Group**
-- Available days (multi-select Mon–Sun)
-- Available times (free text + preset chips like "weekday evenings 18:00–20:00")
-- Extra notes
-
-Submission stores everything; entry status starts as `new`.
+**Fix:**
+- **Mobiel hamburger menu** (Sheet) met alle nav-links + **Sign in** + **Join Waitlist** prominent.
+- "Sign in" knop ook standaard zichtbaar in de header (kleine icon-variant) op mobiel.
+- `StickyCTA` bottom-bar uitbreiden: naast "Book Training" ook een "Sign in" link voor niet-ingelogde gebruikers.
+- Tap targets vergroten naar min. 44px, container padding op mobiel checken.
+- Quick mobile pass op Dashboard en Admin (tabellen → kaarten op klein scherm waar nodig).
 
 ---
 
-## 5. Waitlist Manager (admin)
+### 3. "Speler goedkeuren en koppelen" — waar doe je dat?
 
-Tab **"Waitlist"** rebuilt as a full CRM table:
+Op dit moment: een ouder die zich registreert heeft géén `players` rij. De koppeling moet handmatig in `/admin/players` via "Edit" → veld `parent_user_id` invullen. Dat veld bestaat nu **niet** in de edit-form, dus koppelen is feitelijk onmogelijk vanuit de UI.
 
-- **Columns**: name, age, level, club, position, training type, days/times, joined date, tags, last contact.
-- **Filters**: age range, level, club, training type, available day, tag, status.
-- **Sort**: by priority tag, by date, by age.
-- **Tags / labels** (color chips, multi-select per entry):
-  - High priority
-  - Call back
-  - Trial training
-  - Not suitable
-  - Offered fixed spot
-- **Quick actions per row**: Call (`tel:`), WhatsApp, Add note, Tag, Promote to fixed player.
-- **Click a row** → opens full **Player Profile drawer** with all info, full notes timeline, and history of contact.
+**Fix — nieuwe Admin tab "Approvals" + linking UI:**
 
----
+1. **`/admin/approvals`** (nieuwe pagina, link in sidebar):
+   - Lijst van alle geregistreerde users (`profiles`) die nog **geen** gekoppelde player hebben.
+   - Per rij: naam, email, telefoon, signup datum.
+   - Knop **"Link to player…"** → opent dropdown met alle bestaande players zonder `parent_user_id` + zoekveld + knop "Create new player from this account".
+   - Knop **"Promote from waitlist"** → laat waitlist entries zien die matchen op email/telefoon, één klik koppelt + maakt player aan.
 
-## 6. Controlled Booking Windows
+2. **`/admin/players` edit-form uitbreiden** met een "Linked parent account" sectie:
+   - Toont huidige link (email) of "Not linked".
+   - Zoek-dropdown om een user te koppelen/ontkoppelen.
 
-New tab **"Booking Windows"** — booking is opt-in, you create each window:
+3. **Notificatie** (optioneel email): wanneer admin een player koppelt, krijgt de ouder een welcome-mail "Je bent nu actief, log in op /dashboard".
 
-Per window:
-- Date
-- One or more time slots (e.g. 10:00, 11:00, 12:00)
-- Spots per slot (e.g. 2)
-- **Audience type**:
-  - Open to everyone (anyone with an account)
-  - Only waitlist users (must be in waitlist table)
-  - Only selected priority groups (pick tags, e.g. "High priority")
-- Open / closed toggle
-- Optional message visible to invited users
-
-Public-facing: parents see eligible windows on their dashboard under "Available bookings". They book one slot; system enforces capacity and audience rules. You can manually add/remove people from any window.
-
-Optional notification: when you open a window, a "notify eligible users" button sends them an email.
+**Database:** geen schema wijzigingen nodig. Wel een nieuwe RLS-policy zodat admin alle `profiles` mag lezen (bestaat al: "Admins view all profiles" ✅).
 
 ---
 
-## 7. Admin dashboard layout (`/admin`)
+### 4. Calendly koppelen aan trainingen
 
-Single control center with sidebar nav:
+Twee niveaus mogelijk; ik stel **niveau B** voor (lichte integratie, geen complete vervanging van eigen booking system).
 
-```text
-FTFA ADMIN
-├─ Sunday Planning      ← weekly overview, free slots
-├─ Fixed Players        ← roster CRUD + assign Sunday slot
-├─ Waitlist             ← CRM table with tags, filters, profiles
-├─ Booking Windows      ← create/manage windows + bookings
-├─ Players              ← all profiles (fixed + booked + waitlist promoted)
-└─ Settings             ← booking site toggles, slot times, deadline time
-```
+**Niveau B — Calendly als externe boekings-link per trainingstype:**
 
-Header shows: today's Sunday at-a-glance (X confirmed, Y absent, Z no response).
+- **Settings tab**: invoervelden voor Calendly URLs per training type:
+  - 1-on-1 training URL
+  - Duo training URL
+  - Group training URL
+  - Trial training URL
+  - Optioneel: per booking window een eigen Calendly link.
+- **Parent dashboard** "Available bookings" sectie: naast eigen ParentBooking-flow een knop **"Book via Calendly"** die opent in nieuwe tab met de juiste URL per trainingstype van de speler.
+- **Calendly webhook** (edge function `calendly-webhook`):
+  - Endpoint dat `invitee.created` + `invitee.canceled` events ontvangt.
+  - Matcht op email → vindt `players.parent_user_id` → schrijft een rij in `bookings` (of nieuwe `external_bookings` tabel) met datum/tijd, type, calendly_event_uri.
+  - Stuurt automatisch een booking-confirmation email (bestaande template).
+- **Admin Sunday Planning** toont Calendly-bookings naast eigen slots, met badge "via Calendly".
+- Setup vereist: Calendly **Personal Access Token** (Calendly Pro/Teams account nodig voor webhooks) → opslaan als secret `CALENDLY_API_TOKEN`. Ik vraag deze pas wanneer we hier zijn.
 
----
-
-## 8. Automated email reminders
-
-Two scheduled jobs (run via `pg_cron` + edge function):
-
-- **Monday 19:00** — emails every fixed player who hasn't responded yet for the upcoming Sunday.
-- **Wednesday 16:00** — final reminder to non-responders. After 20:00, dashboard locks.
-
-Optional: when you open a Booking Window, a one-off email to eligible users.
-
-All emails use Lovable's built-in email system on your verified domain (no extra config — we'll set up the email domain as part of this).
+**Database:** nieuwe tabel `external_bookings` (id, source='calendly', user_id, player_id, event_uri uniek, scheduled_at, training_type, status, raw payload jsonb).
 
 ---
 
-## 9. Database structure
+### Build-volgorde
 
-New / updated tables (all with proper RLS — admin-only writes, users see only their own rows):
-
-```text
-profiles              ─ id (= auth user), full_name, phone, role
-players               ─ player profile, parent_user_id → profiles
-parents               ─ optional secondary contacts
-fixed_sunday_slots    ─ player_id, day, time, active        (replaces fixed_players)
-weekly_confirmations  ─ player_id, session_date, status,
-                         alt_from, alt_to, note, locked
-waitlist_entries      ─ all expanded fields above, status
-waitlist_tags         ─ entry_id, tag                        (many-to-many)
-notes                 ─ subject_id, subject_type, body, author
-booking_windows       ─ date, audience type, message, open
-booking_window_slots  ─ window_id, time, capacity
-bookings              ─ slot_id, user_id, created_at
-```
-
-All linked via foreign keys; existing `fixed_players`, `waitlist`, `weekly_attendance`, `app_settings`, `user_roles` are migrated/extended (no data loss for what's already there).
-
----
-
-## 10. Design
-
-- Keep the existing **black / white / grey premium aesthetic** — Anton display font, Inter body.
-- Mobile-first dashboards: stacked cards on phone, table on desktop.
-- Sticky action bars, color-coded status badges, fast filters.
-- Clean sidebar admin shell; minimal chrome on the parent dashboard so it feels personal.
-
----
-
-## What this delivers for you
-
-- You stay in control: nobody books unless you open a window or assign them a slot.
-- One screen tells you exactly who's training Sunday.
-- Waitlist becomes a real CRM — filter, tag, find the best player in seconds.
-- Parents handle their own weekly confirmation; you just react to absences.
-- Reminders go out automatically; no chasing.
-
----
-
-## Build order (one approval, executed in steps)
-
-1. Database migrations + RLS for all new tables.
-2. Auth: parent signup/login + admin login (extend existing).
-3. Parent dashboard (`/dashboard`) with weekly confirmation.
-4. Expanded public waitlist form.
-5. Admin: Sunday Planning, Waitlist CRM, Player Profiles.
-6. Admin: Booking Windows + parent-facing booking flow.
-7. Email setup (verified domain) + scheduled reminders.
-8. Polish, mobile pass, and final QA.
+1. Fix waitlist form re-render bug (5 min).
+2. Mobiele nav + sticky CTA + sign-in zichtbaarheid.
+3. Admin Approvals pagina + player↔user linking UI.
+4. Calendly: Settings velden + dashboard knoppen + webhook + tabel.
+5. QA pass mobiel (375px) op alle key flows.
 
