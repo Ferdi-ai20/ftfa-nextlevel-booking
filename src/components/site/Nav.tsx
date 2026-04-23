@@ -1,7 +1,19 @@
+import { useState } from "react";
 import { motion } from "framer-motion";
-import logoMark from "@/assets/coach-ferdi.jpg";
+import { Menu, X, LogIn } from "lucide-react";
+
+const navItems = [
+  { href: "#about", label: "About" },
+  { href: "#programs", label: "Programs" },
+  { href: "#coach", label: "Coach" },
+  { href: "#booking", label: "Waitlist" },
+  { href: "/dashboard", label: "My Slot" },
+  { href: "#contact", label: "Contact" },
+];
 
 const Nav = () => {
+  const [open, setOpen] = useState(false);
+
   return (
     <motion.header
       initial={{ y: -20, opacity: 0 }}
@@ -10,20 +22,21 @@ const Nav = () => {
       className="fixed top-0 left-0 right-0 z-50 backdrop-blur-md bg-background/70 border-b border-border/50"
     >
       <div className="container flex items-center justify-between h-16">
-        <a href="#top" className="flex items-center gap-2">
+        <a href="#top" className="flex items-center gap-2 min-w-0">
           <span className="display-font text-2xl tracking-tight">FTFA</span>
           <span className="hidden sm:inline text-[10px] uppercase tracking-[0.2em] text-muted-foreground border-l border-border pl-2 ml-1">
-            Ferdi Tarhan<br/>Football Academy
+            Ferdi Tarhan<br />Football Academy
           </span>
         </a>
+
         <nav className="hidden md:flex items-center gap-8 text-sm uppercase tracking-wider">
-          <a href="#about" className="text-muted-foreground hover:text-foreground transition-colors">About</a>
-          <a href="#programs" className="text-muted-foreground hover:text-foreground transition-colors">Programs</a>
-          <a href="#coach" className="text-muted-foreground hover:text-foreground transition-colors">Coach</a>
-          <a href="#booking" className="text-muted-foreground hover:text-foreground transition-colors">Waitlist</a>
-          <a href="/dashboard" className="text-muted-foreground hover:text-foreground transition-colors">My Slot</a>
-          <a href="#contact" className="text-muted-foreground hover:text-foreground transition-colors">Contact</a>
+          {navItems.map((i) => (
+            <a key={i.href} href={i.href} className="text-muted-foreground hover:text-foreground transition-colors">
+              {i.label}
+            </a>
+          ))}
         </nav>
+
         <div className="flex items-center gap-2">
           <a
             href="/auth"
@@ -38,8 +51,72 @@ const Nav = () => {
             Join Waitlist
             <span aria-hidden>→</span>
           </a>
+
+          {/* Mobile sign-in icon button */}
+          <a
+            href="/auth"
+            aria-label="Sign in"
+            className="sm:hidden inline-flex items-center justify-center h-11 w-11 text-muted-foreground hover:text-foreground"
+          >
+            <LogIn className="h-5 w-5" />
+          </a>
+          {/* Mobile hamburger */}
+          <button
+            onClick={() => setOpen(true)}
+            aria-label="Open menu"
+            className="md:hidden inline-flex items-center justify-center h-11 w-11 text-foreground"
+          >
+            <Menu className="h-6 w-6" />
+          </button>
         </div>
       </div>
+
+      {/* Mobile drawer */}
+      {open && (
+        <div className="fixed inset-0 z-50 md:hidden">
+          <div className="absolute inset-0 bg-background/90 backdrop-blur-md" onClick={() => setOpen(false)} />
+          <div className="absolute top-0 right-0 h-full w-[85%] max-w-sm bg-card border-l border-border flex flex-col">
+            <div className="flex items-center justify-between px-5 py-4 border-b border-border">
+              <span className="display-font text-2xl">FTFA</span>
+              <button
+                onClick={() => setOpen(false)}
+                aria-label="Close menu"
+                className="h-11 w-11 inline-flex items-center justify-center"
+              >
+                <X className="h-6 w-6" />
+              </button>
+            </div>
+            <nav className="flex-1 overflow-y-auto p-4 flex flex-col">
+              {navItems.map((i) => (
+                <a
+                  key={i.href}
+                  href={i.href}
+                  onClick={() => setOpen(false)}
+                  className="px-3 py-4 text-sm uppercase tracking-widest text-foreground hover:bg-muted/30 border-b border-border/50"
+                >
+                  {i.label}
+                </a>
+              ))}
+            </nav>
+            <div className="p-4 border-t border-border space-y-2">
+              <a
+                href="/auth"
+                onClick={() => setOpen(false)}
+                className="block w-full text-center border border-border px-4 py-3 text-xs uppercase tracking-widest hover:border-foreground/40"
+              >
+                Sign in
+              </a>
+              <a
+                href="#booking"
+                onClick={() => setOpen(false)}
+                className="block w-full text-center bg-primary text-primary-foreground px-4 py-3 text-xs uppercase tracking-widest font-semibold"
+              >
+                Join Waitlist →
+              </a>
+            </div>
+          </div>
+        </div>
+      )}
     </motion.header>
   );
 };

@@ -5,6 +5,7 @@ import { useAuth } from "@/hooks/useAuth";
 const links = [
   { to: "/admin", end: true, label: "Sunday Planning" },
   { to: "/admin/players", label: "Players" },
+  { to: "/admin/approvals", label: "Approvals" },
   { to: "/admin/fixed", label: "Fixed Players" },
   { to: "/admin/waitlist", label: "Waitlist" },
   { to: "/admin/bookings", label: "Booking Windows" },

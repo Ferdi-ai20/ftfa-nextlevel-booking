@@ -222,10 +222,110 @@ const Players = () => {
                 </select>
               </FormField>
             </div>
+            {editing && <ParentLinker player={editing} onChanged={() => void load()} />}
             <button type="submit" className="w-full bg-primary text-primary-foreground py-3 text-xs uppercase tracking-widest font-semibold hover:bg-primary/90">
               Save
             </button>
           </form>
+        </div>
+      )}
+    </div>
+  );
+};
+
+type ProfileLite = { id: string; full_name: string | null; phone: string | null };
+
+const ParentLinker = ({ player, onChanged }: { player: Player; onChanged: () => void }) => {
+  const [profiles, setProfiles] = useState<ProfileLite[]>([]);
+  const [search, setSearch] = useState("");
+  const [showSearch, setShowSearch] = useState(false);
+  const [linked, setLinked] = useState<ProfileLite | null>(null);
+
+  useEffect(() => {
+    if (player.parent_user_id) {
+      supabase
+        .from("profiles")
+        .select("id, full_name, phone")
+        .eq("id", player.parent_user_id)
+        .maybeSingle()
+        .then(({ data }) => setLinked(data as ProfileLite | null));
+    } else {
+      setLinked(null);
+    }
+  }, [player.parent_user_id]);
+
+  const loadProfiles = async () => {
+    const { data } = await supabase.from("profiles").select("id, full_name, phone").order("created_at", { ascending: false });
+    setProfiles((data ?? []) as ProfileLite[]);
+    setShowSearch(true);
+  };
+
+  const link = async (pid: string) => {
+    const { error } = await supabase.from("players").update({ parent_user_id: pid }).eq("id", player.id);
+    if (error) return toast.error(error.message);
+    toast.success("Linked.");
+    setShowSearch(false);
+    onChanged();
+  };
+
+  const unlink = async () => {
+    const { error } = await supabase.from("players").update({ parent_user_id: null }).eq("id", player.id);
+    if (error) return toast.error(error.message);
+    toast.success("Unlinked.");
+    setLinked(null);
+    onChanged();
+  };
+
+  const filtered = profiles.filter((p) =>
+    [p.full_name, p.phone, p.id].filter(Boolean).some((v) => v!.toLowerCase().includes(search.toLowerCase()))
+  );
+
+  return (
+    <div className="border-t border-border pt-4 space-y-3">
+      <div className="text-[10px] uppercase tracking-[0.25em] text-muted-foreground">Linked parent account</div>
+      {linked ? (
+        <div className="flex items-center justify-between gap-3 bg-background border border-border px-3 py-2">
+          <div className="text-sm">
+            <div className="font-medium">{linked.full_name || "(no name)"}</div>
+            <div className="text-xs text-muted-foreground">{linked.phone || linked.id}</div>
+          </div>
+          <button type="button" onClick={unlink} className="text-[10px] uppercase tracking-widest border border-destructive/40 text-destructive px-2 py-1">
+            Unlink
+          </button>
+        </div>
+      ) : (
+        <div className="text-sm text-muted-foreground">Not linked.</div>
+      )}
+
+      {!showSearch ? (
+        <button type="button" onClick={loadProfiles} className="text-[10px] uppercase tracking-widest border border-border px-3 py-2 hover:border-foreground/40">
+          {linked ? "Change link" : "Link to parent account"}
+        </button>
+      ) : (
+        <div className="space-y-2">
+          <input
+            placeholder="Search name, phone, id…"
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            className={ic}
+          />
+          <div className="max-h-56 overflow-auto border border-border divide-y divide-border">
+            {filtered.length === 0 ? (
+              <div className="p-3 text-xs text-muted-foreground">No matches.</div>
+            ) : (
+              filtered.slice(0, 30).map((p) => (
+                <button
+                  key={p.id}
+                  type="button"
+                  onClick={() => link(p.id)}
+                  className="w-full text-left p-2 hover:bg-muted/30 flex items-center justify-between gap-2"
+                >
+                  <span className="text-sm">{p.full_name || "(no name)"}</span>
+                  <span className="text-xs text-muted-foreground">{p.phone || p.id.slice(0, 8)}</span>
+                </button>
+              ))
+            )}
+          </div>
         </div>
       )}
     </div>

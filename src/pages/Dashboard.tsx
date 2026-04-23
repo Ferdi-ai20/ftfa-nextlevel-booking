@@ -6,6 +6,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { ageFromBirthdate, deadlineFor, fmtSunday, isPastDeadline, isoDate, nextSunday } from "@/lib/dates";
 import ParentBooking from "@/components/site/ParentBooking";
+import CalendlyButton from "@/components/site/CalendlyButton";
 
 type Player = {
   id: string;
@@ -16,6 +17,7 @@ type Player = {
   team: string | null;
   level: string | null;
   position: string | null;
+  training_type?: string | null;
 };
 
 type Slot = { id: string; player_id: string; slot_time: string; duration_minutes: number };
@@ -378,6 +380,9 @@ const PlayerCard = ({
         ) : (
           <div className="text-sm text-muted-foreground">No fixed Sunday slot assigned.</div>
         )}
+        <div className="mt-4">
+          <CalendlyButton trainingType={(player as any).training_type} />
+        </div>
       </div>
 
       {slot && (
