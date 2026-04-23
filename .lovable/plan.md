@@ -1,92 +1,64 @@
+## Plan: Admin layout fixes, mobile sidebar & full attendance override
 
-
-## Plan: Copy refresh, white accent color, club logos, WhatsApp link & approvals guidance
-
-Five focused changes.
+Three focused fixes. No DB changes, no new routes.
 
 ---
 
-### 1. Shorter, punchier copy + Dutch → English
+### 1. Fix overlapping headers across all admin pages
 
-Replace verbose lines and translate remaining Dutch words:
+Page headers (`SundayPlanning`, `Players`, `Approvals`, `Waitlist`, `FixedPlayers`, `BookingWindows`, `Settings`) currently put a huge `text-4xl/5xl` title and action buttons on one row with `flex-wrap`. At narrow widths they collide.
 
-- **Hero** (`Hero.tsx`)
-  - Subheadline: `"For players who want to reach BVO level. High-level techniektraining and intuïtieve voetbalvisie — built for serious players only."`
-  - → `"Built for players chasing pro level. Elite football technique and game intelligence — nothing else."`
-
-- **About** (`About.tsx`)
-  - Lead: `"FTFA is the football academy of Ferdi Tarhan — built around one obsession: developing technical execution and intuitive game intelligence at the highest level."`
-  - → `"FTFA is Ferdi Tarhan's academy. One obsession: technical execution and game intelligence at the highest level."`
-  - Second paragraph: replace `techniektraining` / `intuïtieve voetbalvisie` and shorten:
-  - → `"A methodology unique in the Netherlands. Football technique plus intuitive game vision — players who think, decide and execute faster. No fluff."`
-  - Stat tiles: `Techniek / Visie / Mentaliteit` → **Technique / Vision / Mentality**.
-
-- **CTA** (`CTA.tsx`)
-  - Subheadline → `"If you want entertainment, look elsewhere. If you want the next level — apply."`
-
-- **Coach** (`Coach.tsx`)
-  - First paragraph shortened: `"A decade obsessed with football technique and tactics. FTFA exists to give Dutch talent a methodology that produces real top-level players."`
-  - **Remove the "UEFA Certified" stat tile.** Replace with `{ k: "200+", v: "Players Trained" }` so the row stays balanced (3 tiles: 10+ Years / 200+ Players / NL Based).
-
-- **Programs** (`Programs.tsx`) — tighten the section intro:
-  - → `"One principle across every program: only what produces real progression."`
+**Standardize all admin headers to:**
+- Title: `text-2xl md:text-3xl` (down from `text-4xl/5xl`)
+- Layout: `flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between`
+- Action buttons get their own row on mobile, right-aligned on desktop
+- Tighten the Approvals banner spacing in `AdminShell` so it doesn't crash into page content
 
 ---
 
-### 2. Color: replace primary green/lime accent with white
+### 2. Replace mobile horizontal-scroll tabs with proper Sidebar + hamburger
 
-Currently `--primary: 70 100% 50%` (lime). Change to white so all `text-primary`, `bg-primary`, `border-primary`, ring, gradients automatically follow.
+Currently mobile shows a horizontal scrollable strip of tab chips — cramped and not what a hamburger menu should be.
 
-In `src/index.css`:
-- `--primary: 0 0% 98%;`
-- `--primary-foreground: 0 0% 4%;` (already correct — black text on white button)
-- `--accent: 0 0% 98%;`
-- `--ring: 0 0% 98%;`
-- `--gradient-radial`: change lime tint to white tint (very low opacity, e.g. `hsl(0 0% 100% / 0.06)`).
-- `--shadow-glow`: change to white glow `0 0 60px hsl(0 0% 100% / 0.15)`.
-
-Effect: all green accents (numbers, dots, arrows, buttons, hover borders) become white. No component edits needed beyond the token swap.
+**Refactor `AdminShell.tsx` to use the shadcn `Sidebar` system:**
+- Wrap in `SidebarProvider` with a sidebar that's `collapsible="offcanvas"` on mobile and persistent on desktop
+- Top header always shows a `SidebarTrigger` (hamburger icon) on mobile
+- Sidebar content: vertical list of all 7 admin links with large tap targets (`py-3`), the Approvals link displays the pending-count badge, sign out at bottom
+- Active route highlighted via `NavLink`
+- Sidebar auto-closes after navigation on mobile
+- Keep existing Approvals top banner
 
 ---
 
-### 3. Club logos in "Players placed at" strip
+### 3. Full attendance override on Sunday Planning
 
-Currently `Proof.tsx` renders club names as text. Replace with real logos.
+Parents already submit attending / not_attending / different_time from the dashboard, and the admin page loads these. Today the admin can only "Mark in" / "Mark out". Missing pieces:
 
-- Add SVG logos for: Ajax, PSV, Feyenoord, AZ, FC Utrecht, Vitesse, FC Twente, Heerenveen — sourced as inline SVG components in a new file `src/components/site/ClubLogos.tsx` (or as `/public/clubs/{name}.svg` files). Use Wikimedia public-domain wordmarks where available; fall back to clean monochrome wordmark SVGs we generate ourselves.
-- Update `Proof.tsx` clubs strip: render each as a grayscale logo (`opacity-60 hover:opacity-100`), height ~36px, uniform spacing. Remove text fallback.
-- Note on rights: club logos are trademarked; we'll display them small, monochrome, in a neutral "alumni placement" context. Recommend the user replace with their own approved logo set if they have one.
-
----
-
-### 4. WhatsApp "Message Us" → +31 6 21275348
-
-In `Footer.tsx`, change:
-- `href="https://wa.me/31600000000"` → `href="https://wa.me/31621275348"`
-- Add a small line under "Message Us": `+31 6 21275348` so the number is visible.
-- Same update in `StickyCTA` if it links WhatsApp.
+**Add to `SundayPlanning.tsx`:**
+- Third button **"Different time"** that opens an inline editor with `alt_from`, `alt_to` inputs and an optional note, saving status=`different_time`
+- Small **edit icon** next to existing parent responses → opens the same inline editor pre-filled, so admin can adjust the alt time/note after submission
+- **"Clear response"** action that deletes the `weekly_confirmations` row (resets to "no response")
+- Parent's note (`c.note`) and alt times rendered slightly larger so they're easier to see at a glance
 
 ---
 
-### 5. "Where do I approve new signups?" — make it discoverable
+### 4. Fix ID/text overlapping action buttons
 
-The flow already exists at **Admin → Approvals** (`/admin/approvals`), but the welcome email tells parents the coach must approve, without telling the coach where. Two small additions:
+In `Approvals.tsx` and `Players.tsx` the row layout uses `md:grid-cols-12 items-center` and long values (full UUIDs, long emails) bleed into the action buttons.
 
-- **Admin sidebar badge**: in `AdminShell.tsx`, fetch the count of unlinked profiles and show a small numeric badge next to the "Approvals" link (e.g. `Approvals (3)`) so you immediately see pending signups when you log in.
-- **Admin header banner**: on `/admin` (any page), if pending approvals > 0, show a top banner: `"3 new parent signups waiting for approval → Review"` linking to `/admin/approvals`.
-- **In-app explanation** on the Approvals page header: add one line — `"New parent signups land here. Link them to a player to grant /dashboard access."` (already partially there — keep wording consistent.)
-
-No database changes. No new routes — just surfacing the existing page.
+**Fix:**
+- **Approvals**: shorten displayed User ID to first 8 chars + ellipsis (full ID still in "View details" modal)
+- Both pages: switch row layout to `flex flex-col gap-3 lg:grid lg:grid-cols-12 lg:items-center`, so on mobile each row becomes a stacked card with action buttons on their own line separated by `border-t pt-3`
+- Add `min-w-0 truncate` on text containers so long emails/phones can't push buttons off-screen
+- Action buttons get `whitespace-nowrap` and consistent `min-h-[36px]`
 
 ---
 
 ### Files touched
+- `src/pages/admin/AdminShell.tsx` — Sidebar refactor + header banner spacing
+- `src/pages/admin/SundayPlanning.tsx` — header + Different-time override + edit/clear
+- `src/pages/admin/Approvals.tsx` — header + ID truncation + mobile row layout
+- `src/pages/admin/Players.tsx` — header + mobile row layout
+- `src/pages/admin/Waitlist.tsx`, `FixedPlayers.tsx`, `BookingWindows.tsx`, `Settings.tsx` — header consistency only
 
-- `src/index.css` (color tokens)
-- `src/components/site/Hero.tsx`, `About.tsx`, `CTA.tsx`, `Coach.tsx`, `Programs.tsx` (copy)
-- `src/components/site/Proof.tsx` + new `ClubLogos.tsx` or `/public/clubs/*.svg`
-- `src/components/site/Footer.tsx` + `StickyCTA.tsx` (WhatsApp number)
-- `src/pages/admin/AdminShell.tsx` (sidebar badge + header banner)
-
-No DB migrations, no edge functions.
-
+No migrations, no new dependencies (`Sidebar` and `lucide-react` already in project).

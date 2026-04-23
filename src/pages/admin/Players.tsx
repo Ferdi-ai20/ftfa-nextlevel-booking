@@ -102,14 +102,14 @@ const Players = () => {
 
   return (
     <div className="space-y-6">
-      <header className="flex items-end justify-between gap-4 flex-wrap">
-        <div>
+      <header className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
+        <div className="min-w-0">
           <div className="text-[11px] uppercase tracking-[0.3em] text-primary">/ Players</div>
-          <h1 className="display-font text-4xl uppercase mt-2">All players</h1>
+          <h1 className="display-font text-2xl md:text-3xl uppercase mt-2">All players</h1>
         </div>
         <button
           onClick={startCreate}
-          className="bg-primary text-primary-foreground px-4 py-2.5 text-xs uppercase tracking-widest font-semibold hover:bg-primary/90"
+          className="bg-primary text-primary-foreground px-4 py-2.5 text-xs uppercase tracking-widest font-semibold hover:bg-primary/90 self-start sm:self-auto whitespace-nowrap"
         >
           + New player
         </button>
@@ -127,36 +127,36 @@ const Players = () => {
           <div className="p-6 text-sm text-muted-foreground">No players yet.</div>
         ) : (
           filtered.map((p) => (
-            <div key={p.id} className="p-4 grid md:grid-cols-12 gap-3 items-center">
-              <div className="md:col-span-3">
-                <div className="font-medium">{p.player_name}</div>
-                <div className="text-xs text-muted-foreground">
+            <div key={p.id} className="p-4 flex flex-col gap-3 lg:grid lg:grid-cols-12 lg:gap-4 lg:items-center">
+              <div className="lg:col-span-3 min-w-0">
+                <div className="font-medium truncate">{p.player_name}</div>
+                <div className="text-xs text-muted-foreground truncate">
                   {[ageFromBirthdate(p.birthdate) && `${ageFromBirthdate(p.birthdate)}y`, p.position]
                     .filter(Boolean)
                     .join(" · ")}
                 </div>
               </div>
-              <div className="md:col-span-3 text-sm">
-                <div>{p.club || <span className="text-muted-foreground">—</span>}</div>
-                <div className="text-xs text-muted-foreground">{p.team}</div>
+              <div className="lg:col-span-3 text-sm min-w-0">
+                <div className="truncate">{p.club || <span className="text-muted-foreground">—</span>}</div>
+                <div className="text-xs text-muted-foreground truncate">{p.team}</div>
               </div>
-              <div className="md:col-span-2 text-xs uppercase tracking-widest text-muted-foreground">
+              <div className="lg:col-span-2 text-xs uppercase tracking-widest text-muted-foreground truncate">
                 {p.level || "—"}
               </div>
-              <div className="md:col-span-2 text-xs">
-                {p.phone && <div>{p.phone}</div>}
-                {p.email && <div className="text-muted-foreground">{p.email}</div>}
+              <div className="lg:col-span-2 text-xs min-w-0">
+                {p.phone && <div className="truncate">{p.phone}</div>}
+                {p.email && <div className="text-muted-foreground truncate">{p.email}</div>}
               </div>
-              <div className="md:col-span-2 flex gap-2 justify-end">
+              <div className="lg:col-span-2 flex gap-2 lg:justify-end pt-3 lg:pt-0 border-t lg:border-t-0 border-border">
                 <button
                   onClick={() => startEdit(p)}
-                  className="text-[10px] uppercase tracking-widest border border-border px-2 py-1 hover:border-foreground/40"
+                  className="text-[10px] uppercase tracking-widest border border-border px-3 py-1.5 hover:border-foreground/40 whitespace-nowrap min-h-[34px] flex-1 lg:flex-none"
                 >
                   Edit
                 </button>
                 <button
                   onClick={() => remove(p)}
-                  className="text-[10px] uppercase tracking-widest border border-destructive/40 text-destructive px-2 py-1 hover:bg-destructive/10"
+                  className="text-[10px] uppercase tracking-widest border border-destructive/40 text-destructive px-3 py-1.5 hover:bg-destructive/10 whitespace-nowrap min-h-[34px] flex-1 lg:flex-none"
                 >
                   Del
                 </button>

@@ -97,7 +97,7 @@ const Approvals = () => {
     <div className="space-y-6">
       <header>
         <div className="text-[11px] uppercase tracking-[0.3em] text-primary">/ Approvals</div>
-        <h1 className="display-font text-4xl uppercase mt-2">Pending parent accounts</h1>
+        <h1 className="display-font text-2xl md:text-3xl uppercase mt-2">Pending parent accounts</h1>
         <p className="text-sm text-muted-foreground mt-2">
           Parents who signed up but are not yet linked to a player. Link them to grant dashboard access.
         </p>
@@ -112,31 +112,35 @@ const Approvals = () => {
       ) : (
         <div className="border border-border bg-card divide-y divide-border">
           {profiles.map((p) => (
-            <div key={p.id} className="p-4 grid md:grid-cols-12 gap-3 items-center">
-              <div className="md:col-span-4">
-                <div className="font-medium">{p.full_name || <span className="text-muted-foreground">No name</span>}</div>
-                <div className="text-xs text-muted-foreground font-mono break-all">{p.id}</div>
+            <div key={p.id} className="p-4 flex flex-col gap-3 lg:grid lg:grid-cols-12 lg:gap-4 lg:items-center">
+              <div className="lg:col-span-4 min-w-0">
+                <div className="font-medium truncate">{p.full_name || <span className="text-muted-foreground">No name</span>}</div>
+                <div className="text-xs text-muted-foreground font-mono truncate" title={p.id}>
+                  ID: {p.id.slice(0, 8)}…
+                </div>
               </div>
-              <div className="md:col-span-2 text-sm">{p.phone || <span className="text-muted-foreground">—</span>}</div>
-              <div className="md:col-span-2 text-xs text-muted-foreground">
+              <div className="lg:col-span-2 text-sm min-w-0 truncate">
+                {p.phone || <span className="text-muted-foreground">—</span>}
+              </div>
+              <div className="lg:col-span-2 text-xs text-muted-foreground whitespace-nowrap">
                 Signed up {new Date(p.created_at).toLocaleDateString()}
               </div>
-              <div className="md:col-span-4 flex flex-wrap gap-2 justify-end">
+              <div className="lg:col-span-4 flex flex-wrap gap-2 lg:justify-end pt-3 lg:pt-0 border-t lg:border-t-0 border-border">
                 <button
                   onClick={() => setViewing(p)}
-                  className="text-[10px] uppercase tracking-widest border border-border px-3 py-2 hover:border-foreground/40"
+                  className="text-[10px] uppercase tracking-widest border border-border px-3 py-2 hover:border-foreground/40 whitespace-nowrap min-h-[36px]"
                 >
                   View details
                 </button>
                 <button
                   onClick={() => rejectProfile(p)}
-                  className="text-[10px] uppercase tracking-widest border border-destructive/40 text-destructive px-3 py-2 hover:bg-destructive/10"
+                  className="text-[10px] uppercase tracking-widest border border-destructive/40 text-destructive px-3 py-2 hover:bg-destructive/10 whitespace-nowrap min-h-[36px]"
                 >
                   Reject
                 </button>
                 <button
                   onClick={() => setLinking(p)}
-                  className="text-[10px] uppercase tracking-widest bg-primary text-primary-foreground px-3 py-2 hover:bg-primary/90"
+                  className="text-[10px] uppercase tracking-widest bg-primary text-primary-foreground px-3 py-2 hover:bg-primary/90 whitespace-nowrap min-h-[36px]"
                 >
                   Approve & link →
                 </button>
