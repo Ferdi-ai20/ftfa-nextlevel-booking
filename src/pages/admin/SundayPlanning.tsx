@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { Pencil, Trash2 } from "lucide-react";
+import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { addWeeks, fmtSunday, isoDate, nextSunday } from "@/lib/dates";
 
@@ -30,6 +31,9 @@ const SundayPlanning = () => {
   const [loading, setLoading] = useState(true);
   const [editing, setEditing] = useState<string | null>(null); // player_id being edited
   const [editForm, setEditForm] = useState({ alt_from: "", alt_to: "", note: "" });
+  const [reminderLog, setReminderLog] = useState<Record<string, { first: boolean; final: boolean }>>({});
+  const [sendingReminders, setSendingReminders] = useState(false);
+  const [finalReminder, setFinalReminder] = useState(false);
 
   useEffect(() => {
     void load();
@@ -70,7 +74,7 @@ const SundayPlanning = () => {
 
   const load = async () => {
     setLoading(true);
-    const [{ data: sl }, { data: cf }] = await Promise.all([
+    const [{ data: sl }, { data: cf }, { data: log }] = await Promise.all([
       supabase
         .from("fixed_sunday_slots")
         .select("id, player_id, slot_time, duration_minutes, active, player:players(id, player_name, phone)")
@@ -80,10 +84,79 @@ const SundayPlanning = () => {
         .from("weekly_confirmations")
         .select("player_id, status, alt_from, alt_to, note")
         .eq("session_date", sessionDate),
+      supabase
+        .from("email_send_log")
+        .select("message_id, status, created_at")
+        .eq("template_name", "sunday-reminder")
+        .like("message_id", `sunday-reminder-${sessionDate}-%`)
+        .order("created_at", { ascending: false })
+        .limit(500),
     ]);
     setSlots((sl ?? []) as any);
     setConfirms((cf ?? []) as Confirmation[]);
+
+    // Build reminder map keyed by parent user id
+    const byUser: Record<string, { first: boolean; final: boolean }> = {};
+    for (const row of (log ?? []) as any[]) {
+      // message_id format: sunday-reminder-<sessionDate>-<userId>-<first|final>
+      const m = (row.message_id as string).match(/^sunday-reminder-\d{4}-\d{2}-\d{2}-(.+)-(first|final)$/);
+      if (!m) continue;
+      const [, userId, kind] = m;
+      const ok = row.status === "sent" || row.status === "pending";
+      if (!ok) continue;
+      const cur = byUser[userId] ?? { first: false, final: false };
+      if (kind === "first") cur.first = true;
+      else cur.final = true;
+      byUser[userId] = cur;
+    }
+    setReminderLog(byUser);
     setLoading(false);
+  };
+
+  // Lookup parent_user_id for a player so we can match the email log
+  const [parentByPlayer, setParentByPlayer] = useState<Record<string, string>>({});
+  useEffect(() => {
+    if (!slots.length) return;
+    const ids = slots.map((s) => s.player_id);
+    void supabase
+      .from("players")
+      .select("id, parent_user_id")
+      .in("id", ids)
+      .then(({ data }) => {
+        const map: Record<string, string> = {};
+        for (const p of (data ?? []) as any[]) {
+          if (p.parent_user_id) map[p.id] = p.parent_user_id;
+        }
+        setParentByPlayer(map);
+      });
+  }, [slots]);
+
+  const reminderTagFor = (pid: string) => {
+    const uid = parentByPlayer[pid];
+    if (!uid) return null;
+    return reminderLog[uid] ?? null;
+  };
+
+  const sendRemindersNow = async () => {
+    setSendingReminders(true);
+    try {
+      const { data, error } = await supabase.functions.invoke("send-sunday-reminders", {
+        body: { isFinal: finalReminder },
+      });
+      if (error) {
+        toast.error(error.message || "Failed to send reminders");
+        return;
+      }
+      const sent = (data as any)?.sent ?? 0;
+      const skipped = (data as any)?.skipped ?? 0;
+      toast.success(`Reminders triggered — sent: ${sent}, skipped: ${skipped}`);
+      // Reload after small delay so the email_send_log catches up
+      setTimeout(() => void load(), 1500);
+    } catch (e: any) {
+      toast.error(e?.message || "Failed to send reminders");
+    } finally {
+      setSendingReminders(false);
+    }
   };
 
   const cfFor = (pid: string) => confirms.find((c) => c.player_id === pid);
@@ -209,6 +282,34 @@ const SundayPlanning = () => {
         <Stat label="No response" value={counts.pending} tone="muted" />
       </div>
 
+      {/* Email reminders trigger */}
+      <div className="border border-border bg-card p-4 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+        <div className="min-w-0">
+          <div className="text-[11px] uppercase tracking-[0.25em] text-muted-foreground">Email reminders</div>
+          <div className="text-sm mt-1">
+            Auto-sent Mon 17:00 (first) & Wed 14:00 (final). Trigger now if needed.
+          </div>
+        </div>
+        <div className="flex items-center gap-3 flex-wrap">
+          <label className="flex items-center gap-2 text-xs uppercase tracking-widest text-muted-foreground cursor-pointer select-none">
+            <input
+              type="checkbox"
+              checked={finalReminder}
+              onChange={(e) => setFinalReminder(e.target.checked)}
+              className="accent-primary"
+            />
+            Final reminder
+          </label>
+          <button
+            onClick={sendRemindersNow}
+            disabled={sendingReminders}
+            className="text-xs uppercase tracking-widest bg-primary text-primary-foreground px-4 py-2 font-semibold hover:bg-primary/90 disabled:opacity-40"
+          >
+            {sendingReminders ? "Sending…" : "Send reminders now"}
+          </button>
+        </div>
+      </div>
+
       {freedSlots.length > 0 && (
         <div className="border border-amber-500/40 bg-amber-500/10 p-4">
           <div className="text-[11px] uppercase tracking-[0.25em] text-amber-400 mb-2">
@@ -245,6 +346,24 @@ const SundayPlanning = () => {
                     {s.player?.phone && (
                       <div className="text-xs text-muted-foreground truncate">{s.player.phone}</div>
                     )}
+                    {(() => {
+                      const r = reminderTagFor(s.player_id);
+                      if (!r || (!r.first && !r.final)) return null;
+                      return (
+                        <div className="mt-1 flex flex-wrap gap-1">
+                          {r.first && (
+                            <span className="text-[10px] uppercase tracking-widest border border-border bg-secondary/40 text-muted-foreground px-1.5 py-0.5">
+                              ✉ Mon
+                            </span>
+                          )}
+                          {r.final && (
+                            <span className="text-[10px] uppercase tracking-widest border border-border bg-secondary/40 text-muted-foreground px-1.5 py-0.5">
+                              ✉ Wed
+                            </span>
+                          )}
+                        </div>
+                      );
+                    })()}
                   </div>
                   <div className="lg:col-span-3 min-w-0">
                     <div className="flex items-center gap-2 flex-wrap">
