@@ -13,6 +13,7 @@ import Unsubscribe from "./pages/Unsubscribe.tsx";
 import AdminShell from "./pages/admin/AdminShell.tsx";
 import SundayPlanning from "./pages/admin/SundayPlanning.tsx";
 import Players from "./pages/admin/Players.tsx";
+import Approvals from "./pages/admin/Approvals.tsx";
 import FixedPlayers from "./pages/admin/FixedPlayers.tsx";
 import Waitlist from "./pages/admin/Waitlist.tsx";
 import BookingWindows from "./pages/admin/BookingWindows.tsx";
@@ -38,6 +39,7 @@ const App = () => (
             <Route path="/admin" element={<AdminShell />}>
               <Route index element={<SundayPlanning />} />
               <Route path="players" element={<Players />} />
+              <Route path="approvals" element={<Approvals />} />
               <Route path="fixed" element={<FixedPlayers />} />
               <Route path="waitlist" element={<Waitlist />} />
               <Route path="bookings" element={<BookingWindows />} />
