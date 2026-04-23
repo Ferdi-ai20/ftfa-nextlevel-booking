@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { motion } from "framer-motion";
-import { Menu, X, LogIn } from "lucide-react";
+import { Menu, X, LogIn, ShieldCheck } from "lucide-react";
+import { useAuth } from "@/hooks/useAuth";
 
 const navItems = [
   { href: "#about", label: "About" },
@@ -13,6 +14,7 @@ const navItems = [
 
 const Nav = () => {
   const [open, setOpen] = useState(false);
+  const { session, isAdmin } = useAuth();
 
   return (
     <motion.header
@@ -38,12 +40,23 @@ const Nav = () => {
         </nav>
 
         <div className="flex items-center gap-2">
-          <a
-            href="/auth"
-            className="hidden sm:inline-flex items-center text-xs uppercase tracking-widest text-muted-foreground hover:text-foreground px-3 py-2"
-          >
-            Sign in
-          </a>
+          {isAdmin && (
+            <a
+              href="/admin/approvals"
+              className="hidden sm:inline-flex items-center gap-1.5 text-xs uppercase tracking-widest text-primary hover:text-foreground px-3 py-2 border border-primary/40 hover:border-primary"
+            >
+              <ShieldCheck className="h-3.5 w-3.5" />
+              Approvals
+            </a>
+          )}
+          {!session && (
+            <a
+              href="/auth"
+              className="hidden sm:inline-flex items-center text-xs uppercase tracking-widest text-muted-foreground hover:text-foreground px-3 py-2"
+            >
+              Sign in
+            </a>
+          )}
           <a
             href="#booking"
             className="hidden sm:inline-flex items-center gap-2 bg-primary text-primary-foreground px-4 py-2 text-xs uppercase tracking-widest font-semibold hover:bg-primary/90 transition-colors"
@@ -99,13 +112,24 @@ const Nav = () => {
               ))}
             </nav>
             <div className="p-4 border-t border-border space-y-2">
-              <a
-                href="/auth"
-                onClick={() => setOpen(false)}
-                className="block w-full text-center border border-border px-4 py-3 text-xs uppercase tracking-widest hover:border-foreground/40"
-              >
-                Sign in
-              </a>
+              {isAdmin && (
+                <a
+                  href="/admin/approvals"
+                  onClick={() => setOpen(false)}
+                  className="block w-full text-center border border-primary/40 text-primary px-4 py-3 text-xs uppercase tracking-widest"
+                >
+                  → Approvals
+                </a>
+              )}
+              {!session && (
+                <a
+                  href="/auth"
+                  onClick={() => setOpen(false)}
+                  className="block w-full text-center border border-border px-4 py-3 text-xs uppercase tracking-widest hover:border-foreground/40"
+                >
+                  Sign in
+                </a>
+              )}
               <a
                 href="#booking"
                 onClick={() => setOpen(false)}
