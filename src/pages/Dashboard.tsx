@@ -18,6 +18,8 @@ type Player = {
   level: string | null;
   position: string | null;
   training_type?: string | null;
+  preferred_time_from?: string | null;
+  preferred_time_to?: string | null;
 };
 
 type Slot = { id: string; player_id: string; slot_time: string; duration_minutes: number };
