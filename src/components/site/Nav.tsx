@@ -26,7 +26,7 @@ const Nav = () => {
       <div className="container flex items-center justify-between h-16">
         <a href="#top" className="flex items-center gap-2 min-w-0">
           <span className="display-font text-2xl tracking-tight">FTFA</span>
-          <span className="hidden sm:inline text-[10px] uppercase tracking-[0.2em] text-muted-foreground border-l border-border pl-2 ml-1">
+          <span className="hidden xl:inline text-[10px] uppercase tracking-[0.2em] text-muted-foreground border-l border-border pl-2 ml-1 leading-tight">
             Ferdi Tarhan<br />Football Academy
           </span>
         </a>
@@ -43,9 +43,9 @@ const Nav = () => {
           {isAdmin && (
             <a
               href="/admin/approvals"
-              className="hidden sm:inline-flex items-center gap-1.5 text-xs uppercase tracking-widest text-primary hover:text-foreground px-3 py-2 border border-primary/40 hover:border-primary"
+              className="hidden sm:inline-flex items-center gap-1 text-[10px] uppercase tracking-wider text-primary hover:text-foreground px-2 py-1.5 border border-primary/40 hover:border-primary"
             >
-              <ShieldCheck className="h-3.5 w-3.5" />
+              <ShieldCheck className="h-3 w-3" />
               Approvals
             </a>
           )}
