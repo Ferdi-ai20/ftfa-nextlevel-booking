@@ -282,6 +282,34 @@ const SundayPlanning = () => {
         <Stat label="No response" value={counts.pending} tone="muted" />
       </div>
 
+      {/* Email reminders trigger */}
+      <div className="border border-border bg-card p-4 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+        <div className="min-w-0">
+          <div className="text-[11px] uppercase tracking-[0.25em] text-muted-foreground">Email reminders</div>
+          <div className="text-sm mt-1">
+            Auto-sent Mon 17:00 (first) & Wed 14:00 (final). Trigger now if needed.
+          </div>
+        </div>
+        <div className="flex items-center gap-3 flex-wrap">
+          <label className="flex items-center gap-2 text-xs uppercase tracking-widest text-muted-foreground cursor-pointer select-none">
+            <input
+              type="checkbox"
+              checked={finalReminder}
+              onChange={(e) => setFinalReminder(e.target.checked)}
+              className="accent-primary"
+            />
+            Final reminder
+          </label>
+          <button
+            onClick={sendRemindersNow}
+            disabled={sendingReminders}
+            className="text-xs uppercase tracking-widest bg-primary text-primary-foreground px-4 py-2 font-semibold hover:bg-primary/90 disabled:opacity-40"
+          >
+            {sendingReminders ? "Sending…" : "Send reminders now"}
+          </button>
+        </div>
+      </div>
+
       {freedSlots.length > 0 && (
         <div className="border border-amber-500/40 bg-amber-500/10 p-4">
           <div className="text-[11px] uppercase tracking-[0.25em] text-amber-400 mb-2">
