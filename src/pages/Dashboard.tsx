@@ -213,11 +213,11 @@ const Dashboard = () => {
         <section>
           <div className="text-[11px] uppercase tracking-[0.3em] text-primary">/ This Sunday</div>
           <h1 className="display-font text-5xl md:text-6xl uppercase mt-2">{fmtSunday(sunday)}</h1>
-          <div className={`mt-4 inline-flex items-center gap-3 border px-4 py-2 ${locked ? "border-destructive/50 bg-destructive/10 text-destructive" : "border-primary/40 bg-primary/5 text-primary"}`}>
+          <div className={`mt-4 inline-flex items-center gap-3 border px-4 py-2 ${locked ? "border-amber-500/50 bg-amber-500/10 text-amber-400" : "border-primary/40 bg-primary/5 text-primary"}`}>
             <span className="w-2 h-2 rounded-full bg-current" />
             <span className="text-xs uppercase tracking-widest">
               {locked
-                ? "Locked — contact coach to change"
+                ? "Deadline passed — late responses still accepted"
                 : `Respond before ${deadline.toLocaleDateString("en-GB", { weekday: "short" })} ${deadline.toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit" })}`}
             </span>
           </div>
@@ -240,7 +240,16 @@ const Dashboard = () => {
           players.map((p) => {
             const slot = slots.find((s) => s.player_id === p.id);
             const cf = confirmations.find((c) => c.player_id === p.id && c.session_date === sessionDate);
-            return <PlayerCard key={p.id} player={p} slot={slot} confirmation={cf} locked={locked} onRespond={respond} />;
+            return (
+              <PlayerCard
+                key={p.id}
+                player={p}
+                slot={slot}
+                confirmation={cf}
+                onRespond={respond}
+                onSavePreferredTime={savePreferredTime}
+              />
+            );
           })
         )}
 
