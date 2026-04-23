@@ -64,9 +64,9 @@ const FixedPlayers = () => {
   return (
     <div className="space-y-6">
       <header className="flex items-end justify-between gap-4 flex-wrap">
-        <div>
+        <div className="min-w-0">
           <div className="text-[11px] uppercase tracking-[0.3em] text-primary">/ Fixed Players</div>
-          <h1 className="display-font text-4xl uppercase mt-2">Sunday roster</h1>
+          <h1 className="display-font text-2xl md:text-3xl uppercase mt-2">Sunday roster</h1>
           <p className="text-sm text-muted-foreground mt-2">
             Assign players to a recurring Sunday slot. Add players first in the Players tab.
           </p>

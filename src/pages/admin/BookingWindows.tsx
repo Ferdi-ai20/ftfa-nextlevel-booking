@@ -107,9 +107,9 @@ const BookingWindows = () => {
   return (
     <div className="space-y-6">
       <header className="flex items-end justify-between gap-4 flex-wrap">
-        <div>
+        <div className="min-w-0">
           <div className="text-[11px] uppercase tracking-[0.3em] text-primary">/ Booking Windows</div>
-          <h1 className="display-font text-4xl uppercase mt-2">Open booking on demand</h1>
+          <h1 className="display-font text-2xl md:text-3xl uppercase mt-2">Open booking on demand</h1>
           <p className="text-sm text-muted-foreground mt-2">
             Booking is closed by default. Create a window when you want people to book a slot.
           </p>

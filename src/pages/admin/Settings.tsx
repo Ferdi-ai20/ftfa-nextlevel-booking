@@ -55,7 +55,7 @@ const Settings = () => {
     <div className="space-y-6 max-w-2xl">
       <header>
         <div className="text-[11px] uppercase tracking-[0.3em] text-primary">/ Settings</div>
-        <h1 className="display-font text-4xl uppercase mt-2">Site controls</h1>
+        <h1 className="display-font text-2xl md:text-3xl uppercase mt-2">Site controls</h1>
       </header>
 
       <div className="bg-card border border-border p-6 space-y-5">

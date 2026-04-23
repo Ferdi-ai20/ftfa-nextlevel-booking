@@ -157,7 +157,7 @@ const Waitlist = () => {
     <div className="space-y-6">
       <header>
         <div className="text-[11px] uppercase tracking-[0.3em] text-primary">/ Waitlist CRM</div>
-        <h1 className="display-font text-4xl uppercase mt-2">{filtered.length} of {entries.length}</h1>
+        <h1 className="display-font text-2xl md:text-3xl uppercase mt-2">{filtered.length} of {entries.length}</h1>
       </header>
 
       <div className="grid md:grid-cols-6 gap-2 text-xs">

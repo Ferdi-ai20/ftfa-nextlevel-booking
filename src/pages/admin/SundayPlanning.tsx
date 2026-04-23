@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
+import { Pencil, Trash2 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { addWeeks, fmtSunday, isoDate, nextSunday } from "@/lib/dates";
 
@@ -27,6 +28,8 @@ const SundayPlanning = () => {
   const [slots, setSlots] = useState<Slot[]>([]);
   const [confirms, setConfirms] = useState<Confirmation[]>([]);
   const [loading, setLoading] = useState(true);
+  const [editing, setEditing] = useState<string | null>(null); // player_id being edited
+  const [editForm, setEditForm] = useState({ alt_from: "", alt_to: "", note: "" });
 
   useEffect(() => {
     void load();
@@ -72,11 +75,16 @@ const SundayPlanning = () => {
 
   const overrideStatus = async (pid: string, status: Confirmation["status"]) => {
     const existing = confirms.find((c) => c.player_id === pid);
-    const payload = {
+    const payload: any = {
       player_id: pid,
       session_date: sessionDate,
       status,
     };
+    // When switching away from different_time, clear the alt fields
+    if (status !== "different_time") {
+      payload.alt_from = null;
+      payload.alt_to = null;
+    }
     if (existing) {
       await supabase
         .from("weekly_confirmations")
@@ -89,14 +97,57 @@ const SundayPlanning = () => {
     void load();
   };
 
+  const startEdit = (pid: string) => {
+    const c = cfFor(pid);
+    setEditForm({
+      alt_from: c?.alt_from ?? "",
+      alt_to: c?.alt_to ?? "",
+      note: c?.note ?? "",
+    });
+    setEditing(pid);
+  };
+
+  const saveEdit = async (pid: string) => {
+    const existing = cfFor(pid);
+    const payload: any = {
+      player_id: pid,
+      session_date: sessionDate,
+      status: "different_time",
+      alt_from: editForm.alt_from || null,
+      alt_to: editForm.alt_to || null,
+      note: editForm.note || null,
+    };
+    if (existing) {
+      await supabase
+        .from("weekly_confirmations")
+        .update(payload)
+        .eq("player_id", pid)
+        .eq("session_date", sessionDate);
+    } else {
+      await supabase.from("weekly_confirmations").insert(payload);
+    }
+    setEditing(null);
+    void load();
+  };
+
+  const clearResponse = async (pid: string) => {
+    if (!confirm("Clear this player's response? Status will reset to 'no response'.")) return;
+    await supabase
+      .from("weekly_confirmations")
+      .delete()
+      .eq("player_id", pid)
+      .eq("session_date", sessionDate);
+    void load();
+  };
+
   return (
-    <div className="space-y-8">
-      <header className="flex items-end justify-between gap-4 flex-wrap">
-        <div>
+    <div className="space-y-6">
+      <header className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
+        <div className="min-w-0">
           <div className="text-[11px] uppercase tracking-[0.3em] text-primary">/ Sunday Planning</div>
-          <h1 className="display-font text-4xl md:text-5xl uppercase mt-2">{fmtSunday(sunday)}</h1>
+          <h1 className="display-font text-2xl md:text-3xl uppercase mt-2 truncate">{fmtSunday(sunday)}</h1>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 flex-wrap">
           <button
             onClick={() => setWeekOffset((w) => w - 1)}
             className="px-3 py-2 text-xs uppercase tracking-widest border border-border hover:border-foreground/40"
@@ -150,48 +201,130 @@ const SundayPlanning = () => {
         ) : (
           slots.map((s) => {
             const c = cfFor(s.player_id);
+            const isEditing = editing === s.player_id;
             return (
-              <div key={s.id} className="p-4 grid md:grid-cols-12 gap-4 items-center">
-                <div className="md:col-span-2 font-mono text-lg">{s.slot_time}</div>
-                <div className="md:col-span-3">
-                  <div className="font-medium">{s.player?.player_name}</div>
-                  {s.player?.phone && (
-                    <div className="text-xs text-muted-foreground">{s.player.phone}</div>
-                  )}
-                </div>
-                <div className="md:col-span-3">
-                  <StatusBadge status={c?.status ?? null} />
-                  {c?.status === "different_time" && (c.alt_from || c.alt_to) && (
-                    <div className="text-xs text-amber-400 mt-1">
-                      Available {c.alt_from || "?"}–{c.alt_to || "?"}
+              <div key={s.id} className="p-4 space-y-3">
+                {/* Top row: time + name + status */}
+                <div className="flex flex-col gap-3 lg:grid lg:grid-cols-12 lg:gap-4 lg:items-center">
+                  <div className="lg:col-span-2 font-mono text-lg">{s.slot_time}</div>
+                  <div className="lg:col-span-3 min-w-0">
+                    <div className="font-medium truncate">{s.player?.player_name}</div>
+                    {s.player?.phone && (
+                      <div className="text-xs text-muted-foreground truncate">{s.player.phone}</div>
+                    )}
+                  </div>
+                  <div className="lg:col-span-3 min-w-0">
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <StatusBadge status={c?.status ?? null} />
+                      {c && (
+                        <>
+                          <button
+                            onClick={() => startEdit(s.player_id)}
+                            title="Edit response"
+                            className="p-1 border border-border hover:border-foreground/40 text-muted-foreground hover:text-foreground"
+                          >
+                            <Pencil className="h-3 w-3" />
+                          </button>
+                          <button
+                            onClick={() => clearResponse(s.player_id)}
+                            title="Clear response"
+                            className="p-1 border border-border hover:border-destructive/60 text-muted-foreground hover:text-destructive"
+                          >
+                            <Trash2 className="h-3 w-3" />
+                          </button>
+                        </>
+                      )}
                     </div>
-                  )}
-                  {c?.note && <div className="text-xs text-muted-foreground mt-1">"{c.note}"</div>}
-                </div>
-                <div className="md:col-span-4 flex flex-wrap gap-2 justify-start md:justify-end">
-                  {!c && wa(s.player?.phone) && (
-                    <a
-                      href={wa(s.player?.phone)!}
-                      target="_blank"
-                      rel="noreferrer"
-                      className="text-[10px] uppercase tracking-widest border border-border px-2 py-1 hover:border-foreground/40"
+                    {c?.status === "different_time" && (c.alt_from || c.alt_to) && (
+                      <div className="text-sm text-amber-400 mt-1.5">
+                        Available {c.alt_from || "?"}–{c.alt_to || "?"}
+                      </div>
+                    )}
+                    {c?.note && <div className="text-sm text-muted-foreground mt-1 italic">"{c.note}"</div>}
+                  </div>
+                  <div className="lg:col-span-4 flex flex-wrap gap-2 lg:justify-end">
+                    {!c && wa(s.player?.phone) && (
+                      <a
+                        href={wa(s.player?.phone)!}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="text-[10px] uppercase tracking-widest border border-border px-2.5 py-1.5 hover:border-foreground/40 whitespace-nowrap"
+                      >
+                        Remind
+                      </a>
+                    )}
+                    <button
+                      onClick={() => overrideStatus(s.player_id, "attending")}
+                      className="text-[10px] uppercase tracking-widest border border-primary/40 text-primary px-2.5 py-1.5 hover:bg-primary/10 whitespace-nowrap"
                     >
-                      Remind
-                    </a>
-                  )}
-                  <button
-                    onClick={() => overrideStatus(s.player_id, "attending")}
-                    className="text-[10px] uppercase tracking-widest border border-primary/40 text-primary px-2 py-1 hover:bg-primary/10"
-                  >
-                    Mark in
-                  </button>
-                  <button
-                    onClick={() => overrideStatus(s.player_id, "not_attending")}
-                    className="text-[10px] uppercase tracking-widest border border-destructive/40 text-destructive px-2 py-1 hover:bg-destructive/10"
-                  >
-                    Mark out
-                  </button>
+                      Mark in
+                    </button>
+                    <button
+                      onClick={() => overrideStatus(s.player_id, "not_attending")}
+                      className="text-[10px] uppercase tracking-widest border border-destructive/40 text-destructive px-2.5 py-1.5 hover:bg-destructive/10 whitespace-nowrap"
+                    >
+                      Mark out
+                    </button>
+                    <button
+                      onClick={() => startEdit(s.player_id)}
+                      className="text-[10px] uppercase tracking-widest border border-amber-500/40 text-amber-400 px-2.5 py-1.5 hover:bg-amber-500/10 whitespace-nowrap"
+                    >
+                      Different time
+                    </button>
+                  </div>
                 </div>
+
+                {/* Inline editor */}
+                {isEditing && (
+                  <div className="border border-amber-500/40 bg-amber-500/5 p-3 space-y-3">
+                    <div className="text-[10px] uppercase tracking-widest text-amber-400">
+                      Edit response · Different time
+                    </div>
+                    <div className="grid grid-cols-2 gap-2">
+                      <label className="text-xs">
+                        <span className="text-muted-foreground">From</span>
+                        <input
+                          type="time"
+                          value={editForm.alt_from}
+                          onChange={(e) => setEditForm({ ...editForm, alt_from: e.target.value })}
+                          className="mt-1 w-full bg-background border border-border px-2 py-1.5 text-sm focus:border-primary focus:outline-none [color-scheme:dark]"
+                        />
+                      </label>
+                      <label className="text-xs">
+                        <span className="text-muted-foreground">To</span>
+                        <input
+                          type="time"
+                          value={editForm.alt_to}
+                          onChange={(e) => setEditForm({ ...editForm, alt_to: e.target.value })}
+                          className="mt-1 w-full bg-background border border-border px-2 py-1.5 text-sm focus:border-primary focus:outline-none [color-scheme:dark]"
+                        />
+                      </label>
+                    </div>
+                    <label className="text-xs block">
+                      <span className="text-muted-foreground">Note (optional)</span>
+                      <textarea
+                        value={editForm.note}
+                        onChange={(e) => setEditForm({ ...editForm, note: e.target.value })}
+                        rows={2}
+                        className="mt-1 w-full bg-background border border-border px-2 py-1.5 text-sm focus:border-primary focus:outline-none"
+                      />
+                    </label>
+                    <div className="flex gap-2 justify-end">
+                      <button
+                        onClick={() => setEditing(null)}
+                        className="text-[10px] uppercase tracking-widest border border-border px-3 py-1.5 hover:border-foreground/40"
+                      >
+                        Cancel
+                      </button>
+                      <button
+                        onClick={() => saveEdit(s.player_id)}
+                        className="text-[10px] uppercase tracking-widest bg-primary text-primary-foreground px-3 py-1.5 font-semibold hover:bg-primary/90"
+                      >
+                        Save
+                      </button>
+                    </div>
+                  </div>
+                )}
               </div>
             );
           })
@@ -211,7 +344,7 @@ const Stat = ({ label, value, tone }: { label: string; value: number; tone: "pri
   return (
     <div className={`border ${toneCls} bg-card p-4`}>
       <div className="text-[10px] uppercase tracking-widest">{label}</div>
-      <div className="display-font text-4xl mt-1">{value}</div>
+      <div className="display-font text-3xl md:text-4xl mt-1">{value}</div>
     </div>
   );
 };
@@ -219,7 +352,7 @@ const Stat = ({ label, value, tone }: { label: string; value: number; tone: "pri
 const StatusBadge = ({ status }: { status: Confirmation["status"] | null }) => {
   if (!status)
     return (
-      <span className="text-[10px] uppercase tracking-widest border border-border px-2 py-1 text-muted-foreground">
+      <span className="text-[10px] uppercase tracking-widest border border-border px-2 py-1 text-muted-foreground whitespace-nowrap">
         ⏳ No response
       </span>
     );
@@ -229,7 +362,7 @@ const StatusBadge = ({ status }: { status: Confirmation["status"] | null }) => {
     different_time: { l: "⏰ Different time", c: "border-amber-500/50 bg-amber-500/10 text-amber-400" },
   } as const;
   const m = map[status];
-  return <span className={`text-[10px] uppercase tracking-widest border px-2 py-1 ${m.c}`}>{m.l}</span>;
+  return <span className={`text-[10px] uppercase tracking-widest border px-2 py-1 whitespace-nowrap ${m.c}`}>{m.l}</span>;
 };
 
 export default SundayPlanning;
