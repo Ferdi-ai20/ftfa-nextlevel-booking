@@ -117,16 +117,28 @@ const Approvals = () => {
                 <div className="font-medium">{p.full_name || <span className="text-muted-foreground">No name</span>}</div>
                 <div className="text-xs text-muted-foreground font-mono break-all">{p.id}</div>
               </div>
-              <div className="md:col-span-3 text-sm">{p.phone || <span className="text-muted-foreground">—</span>}</div>
-              <div className="md:col-span-3 text-xs text-muted-foreground">
+              <div className="md:col-span-2 text-sm">{p.phone || <span className="text-muted-foreground">—</span>}</div>
+              <div className="md:col-span-2 text-xs text-muted-foreground">
                 Signed up {new Date(p.created_at).toLocaleDateString()}
               </div>
-              <div className="md:col-span-2 flex justify-end">
+              <div className="md:col-span-4 flex flex-wrap gap-2 justify-end">
+                <button
+                  onClick={() => setViewing(p)}
+                  className="text-[10px] uppercase tracking-widest border border-border px-3 py-2 hover:border-foreground/40"
+                >
+                  View details
+                </button>
+                <button
+                  onClick={() => rejectProfile(p)}
+                  className="text-[10px] uppercase tracking-widest border border-destructive/40 text-destructive px-3 py-2 hover:bg-destructive/10"
+                >
+                  Reject
+                </button>
                 <button
                   onClick={() => setLinking(p)}
                   className="text-[10px] uppercase tracking-widest bg-primary text-primary-foreground px-3 py-2 hover:bg-primary/90"
                 >
-                  Link to player…
+                  Approve & link →
                 </button>
               </div>
             </div>
