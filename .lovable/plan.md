@@ -1,64 +1,69 @@
-## Plan: Admin layout fixes, mobile sidebar & full attendance override
 
-Three focused fixes. No DB changes, no new routes.
 
----
+## Plan: Knoppen werkend maken + admin ziet de keuze + mobiel hamburgermenu weg
 
-### 1. Fix overlapping headers across all admin pages
-
-Page headers (`SundayPlanning`, `Players`, `Approvals`, `Waitlist`, `FixedPlayers`, `BookingWindows`, `Settings`) currently put a huge `text-4xl/5xl` title and action buttons on one row with `flex-wrap`. At narrow widths they collide.
-
-**Standardize all admin headers to:**
-- Title: `text-2xl md:text-3xl` (down from `text-4xl/5xl`)
-- Layout: `flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between`
-- Action buttons get their own row on mobile, right-aligned on desktop
-- Tighten the Approvals banner spacing in `AdminShell` so it doesn't crash into page content
+Drie gerichte fixes.
 
 ---
 
-### 2. Replace mobile horizontal-scroll tabs with proper Sidebar + hamburger
+### 1. Attendance-knoppen werken niet → fixen
 
-Currently mobile shows a horizontal scrollable strip of tab chips — cramped and not what a hamburger menu should be.
+De knoppen op `/dashboard` reageren niet of de keuze wordt niet opgeslagen. Oorzaak ligt waarschijnlijk in `respond()` in `src/pages/Dashboard.tsx`: de upsert op `weekly_confirmations` mist een unieke constraint op (`player_id`, `session_date`), waardoor `upsert` faalt of een nieuwe rij maakt zonder dat de UI hem toont.
 
-**Refactor `AdminShell.tsx` to use the shadcn `Sidebar` system:**
-- Wrap in `SidebarProvider` with a sidebar that's `collapsible="offcanvas"` on mobile and persistent on desktop
-- Top header always shows a `SidebarTrigger` (hamburger icon) on mobile
-- Sidebar content: vertical list of all 7 admin links with large tap targets (`py-3`), the Approvals link displays the pending-count badge, sign out at bottom
-- Active route highlighted via `NavLink`
-- Sidebar auto-closes after navigation on mobile
-- Keep existing Approvals top banner
+Wijzigingen:
+
+- **DB-migratie**: unieke index toevoegen op `weekly_confirmations(player_id, session_date)` zodat `upsert({ onConflict: "player_id,session_date" })` betrouwbaar werkt.
+- **`Dashboard.tsx` → `respond()`**: expliciet eerst `select` doen op bestaande rij voor (player_id, session_date); als die bestaat → `update` op `id`, anders `insert`. Geen `upsert` meer. Direct lokale state bijwerken na succes (geen `loadAll()` reload).
+- Toast bij elke klik: succes ("Response saved") of fout met de echte foutmelding (nu wordt fout stil weggeslikt).
+- Knoppen krijgen `disabled` state tijdens de request zodat dubbelklik geen race veroorzaakt.
+- "Different time" knop opent nu het inline-formulier én slaat status `different_time` direct op zodra op "Save" wordt geklikt (alt_from / alt_to / note worden meegestuurd in dezelfde rij).
+
+### 2. Admin ziet de keuze van de speler niet
+
+In `src/pages/admin/SundayPlanning.tsx` worden alleen `weekly_confirmations` van spelers met een `fixed_sunday_slot` getoond. Bovendien wordt de pagina niet realtime ververst — de admin moet handmatig herladen.
+
+Wijzigingen:
+
+- **Realtime subscription** op `weekly_confirmations` in `SundayPlanning.tsx`: bij elke INSERT/UPDATE voor de huidige `session_date` direct de lokale `confirms` state bijwerken.
+- Migratie: `ALTER PUBLICATION supabase_realtime ADD TABLE public.weekly_confirmations;` en `ALTER TABLE public.weekly_confirmations REPLICA IDENTITY FULL;`.
+- Per slot tonen: huidige status badge + (bij `different_time`) het tijdvoorstel `alt_from–alt_to` en `note` direct zichtbaar onder de naam, niet pas na klik.
+- "Last updated" timestamp tonen zodat de admin ziet wanneer een ouder reageerde.
+
+### 3. Hamburgermenu (drie streepjes) op mobiel weghalen
+
+In `src/pages/admin/AdminShell.tsx` staat nu een hamburger + Sheet drawer. Vervangen door een altijd-zichtbare horizontale tab-bar bovenaan op mobiel.
+
+Wijzigingen in `AdminShell.tsx`:
+
+- Sheet/hamburger volledig verwijderen.
+- Mobiele header wordt: FTFA-titel + horizontaal scrollbare tab-rij met alle 7 admin-links direct zichtbaar (geen klik nodig om te openen).
+- Approvals-link houdt de count badge (rood bolletje met aantal).
+- Sign out wordt een kleine knop rechts in de mobiele header.
+- Desktop sidebar blijft ongewijzigd.
+
+Layout mobiel:
+
+```text
+┌─────────────────────────────────────┐
+│ FTFA Admin              [Sign out]  │
+├─────────────────────────────────────┤
+│ Sunday│Players│Approvals③│Fixed│... │ ← horizontaal scrollbaar
+└─────────────────────────────────────┘
+```
 
 ---
 
-### 3. Full attendance override on Sunday Planning
+### Technische details
 
-Parents already submit attending / not_attending / different_time from the dashboard, and the admin page loads these. Today the admin can only "Mark in" / "Mark out". Missing pieces:
+**Files:**
+- `src/pages/Dashboard.tsx` — `respond()` herschrijven (select-then-update/insert), toasts, disabled state, optimistic update.
+- `src/pages/admin/SundayPlanning.tsx` — realtime subscription, alt-tijd/note inline tonen.
+- `src/pages/admin/AdminShell.tsx` — hamburger weg, horizontale tab-bar terug op mobiel.
 
-**Add to `SundayPlanning.tsx`:**
-- Third button **"Different time"** that opens an inline editor with `alt_from`, `alt_to` inputs and an optional note, saving status=`different_time`
-- Small **edit icon** next to existing parent responses → opens the same inline editor pre-filled, so admin can adjust the alt time/note after submission
-- **"Clear response"** action that deletes the `weekly_confirmations` row (resets to "no response")
-- Parent's note (`c.note`) and alt times rendered slightly larger so they're easier to see at a glance
+**DB-migraties:**
+- `CREATE UNIQUE INDEX weekly_confirmations_player_session_uniq ON public.weekly_confirmations (player_id, session_date);`
+- `ALTER TABLE public.weekly_confirmations REPLICA IDENTITY FULL;`
+- `ALTER PUBLICATION supabase_realtime ADD TABLE public.weekly_confirmations;`
 
----
+Geen edge-function changes, geen email-changes (komen later).
 
-### 4. Fix ID/text overlapping action buttons
-
-In `Approvals.tsx` and `Players.tsx` the row layout uses `md:grid-cols-12 items-center` and long values (full UUIDs, long emails) bleed into the action buttons.
-
-**Fix:**
-- **Approvals**: shorten displayed User ID to first 8 chars + ellipsis (full ID still in "View details" modal)
-- Both pages: switch row layout to `flex flex-col gap-3 lg:grid lg:grid-cols-12 lg:items-center`, so on mobile each row becomes a stacked card with action buttons on their own line separated by `border-t pt-3`
-- Add `min-w-0 truncate` on text containers so long emails/phones can't push buttons off-screen
-- Action buttons get `whitespace-nowrap` and consistent `min-h-[36px]`
-
----
-
-### Files touched
-- `src/pages/admin/AdminShell.tsx` — Sidebar refactor + header banner spacing
-- `src/pages/admin/SundayPlanning.tsx` — header + Different-time override + edit/clear
-- `src/pages/admin/Approvals.tsx` — header + ID truncation + mobile row layout
-- `src/pages/admin/Players.tsx` — header + mobile row layout
-- `src/pages/admin/Waitlist.tsx`, `FixedPlayers.tsx`, `BookingWindows.tsx`, `Settings.tsx` — header consistency only
-
-No migrations, no new dependencies (`Sidebar` and `lucide-react` already in project).
