@@ -1,26 +1,22 @@
-import { NavLink, Outlet, useNavigate, Link, useLocation } from "react-router-dom";
+import { NavLink, Outlet, useNavigate, Link } from "react-router-dom";
 import { useEffect, useState } from "react";
-import { Menu } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
-import { Sheet, SheetContent, SheetTrigger, SheetTitle, SheetHeader } from "@/components/ui/sheet";
 
 const links = [
-  { to: "/admin", end: true, label: "Sunday Planning" },
+  { to: "/admin", end: true, label: "Sunday" },
   { to: "/admin/players", label: "Players" },
   { to: "/admin/approvals", label: "Approvals" },
-  { to: "/admin/fixed", label: "Fixed Players" },
+  { to: "/admin/fixed", label: "Fixed" },
   { to: "/admin/waitlist", label: "Waitlist" },
-  { to: "/admin/bookings", label: "Booking Windows" },
+  { to: "/admin/bookings", label: "Bookings" },
   { to: "/admin/settings", label: "Settings" },
 ];
 
 const AdminShell = () => {
   const { session, isAdmin, loading, signOut } = useAuth();
   const navigate = useNavigate();
-  const location = useLocation();
   const [pendingApprovals, setPendingApprovals] = useState(0);
-  const [mobileOpen, setMobileOpen] = useState(false);
 
   useEffect(() => {
     if (!loading && !session) navigate("/auth?redirect=/admin", { replace: true });
@@ -39,11 +35,6 @@ const AdminShell = () => {
     const interval = setInterval(loadCount, 30000);
     return () => clearInterval(interval);
   }, [isAdmin]);
-
-  // Auto-close mobile sheet on route change
-  useEffect(() => {
-    setMobileOpen(false);
-  }, [location.pathname]);
 
   if (loading) return <div className="min-h-screen grid place-items-center bg-background">Loading…</div>;
   if (!session) return null;
@@ -67,33 +58,6 @@ const AdminShell = () => {
     );
   }
 
-  const NavList = ({ onNav }: { onNav?: () => void }) => (
-    <nav className="flex-1 p-3 space-y-1">
-      {links.map((l) => (
-        <NavLink
-          key={l.to}
-          to={l.to}
-          end={l.end}
-          onClick={onNav}
-          className={({ isActive }) =>
-            `flex items-center justify-between px-4 py-3 text-sm md:text-xs uppercase tracking-widest border-l-2 transition-colors ${
-              isActive
-                ? "border-primary text-foreground bg-primary/10"
-                : "border-transparent text-muted-foreground hover:text-foreground hover:border-border"
-            }`
-          }
-        >
-          <span>{l.label}</span>
-          {l.to === "/admin/approvals" && pendingApprovals > 0 && (
-            <span className="ml-2 inline-flex items-center justify-center min-w-[22px] h-[22px] px-1.5 rounded-full bg-primary text-primary-foreground text-[10px] font-bold">
-              {pendingApprovals}
-            </span>
-          )}
-        </NavLink>
-      ))}
-    </nav>
-  );
-
   return (
     <main className="min-h-screen bg-background text-foreground flex">
       {/* Desktop sidebar */}
@@ -102,7 +66,29 @@ const AdminShell = () => {
           <div className="display-font text-2xl uppercase">FTFA</div>
           <div className="text-[10px] uppercase tracking-[0.2em] text-muted-foreground mt-1">Admin</div>
         </div>
-        <NavList />
+        <nav className="flex-1 p-3 space-y-1">
+          {links.map((l) => (
+            <NavLink
+              key={l.to}
+              to={l.to}
+              end={l.end}
+              className={({ isActive }) =>
+                `flex items-center justify-between px-4 py-3 text-xs uppercase tracking-widest border-l-2 transition-colors ${
+                  isActive
+                    ? "border-primary text-foreground bg-primary/10"
+                    : "border-transparent text-muted-foreground hover:text-foreground hover:border-border"
+                }`
+              }
+            >
+              <span>{l.label}</span>
+              {l.to === "/admin/approvals" && pendingApprovals > 0 && (
+                <span className="ml-2 inline-flex items-center justify-center min-w-[22px] h-[22px] px-1.5 rounded-full bg-primary text-primary-foreground text-[10px] font-bold">
+                  {pendingApprovals}
+                </span>
+              )}
+            </NavLink>
+          ))}
+        </nav>
         <div className="p-3 border-t border-border">
           <button
             onClick={signOut}
@@ -114,46 +100,43 @@ const AdminShell = () => {
       </aside>
 
       <div className="flex-1 min-w-0">
-        {/* Mobile top bar with hamburger */}
+        {/* Mobile header: title + sign out */}
         <header className="md:hidden border-b border-border px-4 py-3 flex items-center justify-between gap-3 sticky top-0 bg-background z-30">
-          <Sheet open={mobileOpen} onOpenChange={setMobileOpen}>
-            <SheetTrigger asChild>
-              <button
-                aria-label="Open menu"
-                className="relative p-2 -ml-2 border border-border hover:border-foreground/40"
+          <div className="display-font text-lg uppercase tracking-wide truncate">FTFA Admin</div>
+          <button
+            onClick={signOut}
+            className="text-[10px] uppercase tracking-widest border border-border px-2.5 py-1.5 hover:border-foreground/40 whitespace-nowrap"
+          >
+            Sign out
+          </button>
+        </header>
+
+        {/* Mobile horizontal tab bar */}
+        <nav className="md:hidden border-b border-border bg-background sticky top-[57px] z-20 overflow-x-auto scrollbar-none">
+          <div className="flex min-w-max">
+            {links.map((l) => (
+              <NavLink
+                key={l.to}
+                to={l.to}
+                end={l.end}
+                className={({ isActive }) =>
+                  `relative flex items-center gap-1.5 px-4 py-3 text-[11px] uppercase tracking-widest whitespace-nowrap border-b-2 transition-colors ${
+                    isActive
+                      ? "border-primary text-foreground"
+                      : "border-transparent text-muted-foreground hover:text-foreground"
+                  }`
+                }
               >
-                <Menu className="h-5 w-5" />
-                {pendingApprovals > 0 && (
-                  <span className="absolute -top-1 -right-1 min-w-[18px] h-[18px] px-1 rounded-full bg-primary text-primary-foreground text-[10px] font-bold inline-flex items-center justify-center">
+                <span>{l.label}</span>
+                {l.to === "/admin/approvals" && pendingApprovals > 0 && (
+                  <span className="inline-flex items-center justify-center min-w-[18px] h-[18px] px-1 rounded-full bg-primary text-primary-foreground text-[10px] font-bold">
                     {pendingApprovals}
                   </span>
                 )}
-              </button>
-            </SheetTrigger>
-            <SheetContent side="left" className="p-0 w-72 flex flex-col">
-              <SheetHeader className="p-6 border-b border-border text-left">
-                <SheetTitle className="display-font text-2xl uppercase tracking-wide">FTFA</SheetTitle>
-                <div className="text-[10px] uppercase tracking-[0.2em] text-muted-foreground">Admin</div>
-              </SheetHeader>
-              <NavList onNav={() => setMobileOpen(false)} />
-              <div className="p-3 border-t border-border">
-                <button
-                  onClick={() => {
-                    setMobileOpen(false);
-                    signOut();
-                  }}
-                  className="w-full text-xs uppercase tracking-widest border border-border px-3 py-2.5 hover:border-foreground/40"
-                >
-                  Sign out
-                </button>
-              </div>
-            </SheetContent>
-          </Sheet>
-
-          <div className="display-font text-lg uppercase tracking-wide truncate">FTFA Admin</div>
-
-          <div className="w-9" aria-hidden /> {/* spacer to balance hamburger */}
-        </header>
+              </NavLink>
+            ))}
+          </div>
+        </nav>
 
         {pendingApprovals > 0 && (
           <Link
