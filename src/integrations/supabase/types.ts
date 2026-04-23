@@ -17,6 +17,10 @@ export type Database = {
       app_settings: {
         Row: {
           active_time_slots: string[]
+          calendly_url_1on1: string | null
+          calendly_url_duo: string | null
+          calendly_url_group: string | null
+          calendly_url_trial: string | null
           closed_message: string
           id: number
           updated_at: string
@@ -24,6 +28,10 @@ export type Database = {
         }
         Insert: {
           active_time_slots?: string[]
+          calendly_url_1on1?: string | null
+          calendly_url_duo?: string | null
+          calendly_url_group?: string | null
+          calendly_url_trial?: string | null
           closed_message?: string
           id?: number
           updated_at?: string
@@ -31,6 +39,10 @@ export type Database = {
         }
         Update: {
           active_time_slots?: string[]
+          calendly_url_1on1?: string | null
+          calendly_url_duo?: string | null
+          calendly_url_group?: string | null
+          calendly_url_trial?: string | null
           closed_message?: string
           id?: number
           updated_at?: string
@@ -228,6 +240,65 @@ export type Database = {
           used_at?: string | null
         }
         Relationships: []
+      }
+      external_bookings: {
+        Row: {
+          created_at: string
+          ends_at: string | null
+          event_uri: string
+          id: string
+          invitee_email: string | null
+          invitee_name: string | null
+          parent_user_id: string | null
+          player_id: string | null
+          raw: Json | null
+          scheduled_at: string
+          source: string
+          status: string
+          training_type: string | null
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          ends_at?: string | null
+          event_uri: string
+          id?: string
+          invitee_email?: string | null
+          invitee_name?: string | null
+          parent_user_id?: string | null
+          player_id?: string | null
+          raw?: Json | null
+          scheduled_at: string
+          source?: string
+          status?: string
+          training_type?: string | null
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          ends_at?: string | null
+          event_uri?: string
+          id?: string
+          invitee_email?: string | null
+          invitee_name?: string | null
+          parent_user_id?: string | null
+          player_id?: string | null
+          raw?: Json | null
+          scheduled_at?: string
+          source?: string
+          status?: string
+          training_type?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "external_bookings_player_id_fkey"
+            columns: ["player_id"]
+            isOneToOne: false
+            referencedRelation: "players"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       fixed_players: {
         Row: {
