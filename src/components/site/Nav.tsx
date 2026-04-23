@@ -26,7 +26,7 @@ const Nav = () => {
       <div className="container flex items-center justify-between h-16">
         <a href="#top" className="flex items-center gap-2 min-w-0">
           <span className="display-font text-2xl tracking-tight">FTFA</span>
-          <span className="hidden sm:inline text-[10px] uppercase tracking-[0.2em] text-muted-foreground border-l border-border pl-2 ml-1">
+          <span className="hidden xl:inline text-[10px] uppercase tracking-[0.2em] text-muted-foreground border-l border-border pl-2 ml-1 leading-tight">
             Ferdi Tarhan<br />Football Academy
           </span>
         </a>
