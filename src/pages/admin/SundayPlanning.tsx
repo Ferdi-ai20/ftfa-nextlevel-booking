@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { Pencil, Trash2 } from "lucide-react";
+import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { addWeeks, fmtSunday, isoDate, nextSunday } from "@/lib/dates";
 
@@ -30,6 +31,9 @@ const SundayPlanning = () => {
   const [loading, setLoading] = useState(true);
   const [editing, setEditing] = useState<string | null>(null); // player_id being edited
   const [editForm, setEditForm] = useState({ alt_from: "", alt_to: "", note: "" });
+  const [reminderLog, setReminderLog] = useState<Record<string, { first: boolean; final: boolean }>>({});
+  const [sendingReminders, setSendingReminders] = useState(false);
+  const [finalReminder, setFinalReminder] = useState(false);
 
   useEffect(() => {
     void load();
@@ -70,7 +74,7 @@ const SundayPlanning = () => {
 
   const load = async () => {
     setLoading(true);
-    const [{ data: sl }, { data: cf }] = await Promise.all([
+    const [{ data: sl }, { data: cf }, { data: log }] = await Promise.all([
       supabase
         .from("fixed_sunday_slots")
         .select("id, player_id, slot_time, duration_minutes, active, player:players(id, player_name, phone)")
@@ -80,10 +84,79 @@ const SundayPlanning = () => {
         .from("weekly_confirmations")
         .select("player_id, status, alt_from, alt_to, note")
         .eq("session_date", sessionDate),
+      supabase
+        .from("email_send_log")
+        .select("message_id, status, created_at")
+        .eq("template_name", "sunday-reminder")
+        .like("message_id", `sunday-reminder-${sessionDate}-%`)
+        .order("created_at", { ascending: false })
+        .limit(500),
     ]);
     setSlots((sl ?? []) as any);
     setConfirms((cf ?? []) as Confirmation[]);
+
+    // Build reminder map keyed by parent user id
+    const byUser: Record<string, { first: boolean; final: boolean }> = {};
+    for (const row of (log ?? []) as any[]) {
+      // message_id format: sunday-reminder-<sessionDate>-<userId>-<first|final>
+      const m = (row.message_id as string).match(/^sunday-reminder-\d{4}-\d{2}-\d{2}-(.+)-(first|final)$/);
+      if (!m) continue;
+      const [, userId, kind] = m;
+      const ok = row.status === "sent" || row.status === "pending";
+      if (!ok) continue;
+      const cur = byUser[userId] ?? { first: false, final: false };
+      if (kind === "first") cur.first = true;
+      else cur.final = true;
+      byUser[userId] = cur;
+    }
+    setReminderLog(byUser);
     setLoading(false);
+  };
+
+  // Lookup parent_user_id for a player so we can match the email log
+  const [parentByPlayer, setParentByPlayer] = useState<Record<string, string>>({});
+  useEffect(() => {
+    if (!slots.length) return;
+    const ids = slots.map((s) => s.player_id);
+    void supabase
+      .from("players")
+      .select("id, parent_user_id")
+      .in("id", ids)
+      .then(({ data }) => {
+        const map: Record<string, string> = {};
+        for (const p of (data ?? []) as any[]) {
+          if (p.parent_user_id) map[p.id] = p.parent_user_id;
+        }
+        setParentByPlayer(map);
+      });
+  }, [slots]);
+
+  const reminderTagFor = (pid: string) => {
+    const uid = parentByPlayer[pid];
+    if (!uid) return null;
+    return reminderLog[uid] ?? null;
+  };
+
+  const sendRemindersNow = async () => {
+    setSendingReminders(true);
+    try {
+      const { data, error } = await supabase.functions.invoke("send-sunday-reminders", {
+        body: { isFinal: finalReminder },
+      });
+      if (error) {
+        toast.error(error.message || "Failed to send reminders");
+        return;
+      }
+      const sent = (data as any)?.sent ?? 0;
+      const skipped = (data as any)?.skipped ?? 0;
+      toast.success(`Reminders triggered — sent: ${sent}, skipped: ${skipped}`);
+      // Reload after small delay so the email_send_log catches up
+      setTimeout(() => void load(), 1500);
+    } catch (e: any) {
+      toast.error(e?.message || "Failed to send reminders");
+    } finally {
+      setSendingReminders(false);
+    }
   };
 
   const cfFor = (pid: string) => confirms.find((c) => c.player_id === pid);
