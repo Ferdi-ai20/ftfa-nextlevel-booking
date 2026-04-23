@@ -17,7 +17,7 @@ const CTA = () => {
             Only for<br/>players who are<br/><span className="text-primary">serious.</span>
           </h2>
           <p className="mt-8 text-lg md:text-xl text-muted-foreground max-w-2xl mx-auto">
-            If you're looking for entertainment, this isn't it. If you're looking for the standard that gets you to the next level — apply.
+            If you want entertainment, look elsewhere. If you want the next level — apply.
           </p>
           <a
             href="#booking"

@@ -36,7 +36,7 @@ const Coach = () => {
               Ferdi<br/>Tarhan.
             </h2>
             <p className="mt-8 text-lg md:text-xl leading-relaxed">
-              A decade of obsession with the technical and tactical side of football. Built FTFA to give Dutch talent the methodology that produces real top-level players — not entertainment, not group fitness, not noise.
+              A decade obsessed with football technique and tactics. FTFA exists to give Dutch talent a methodology that produces real top-level players.
             </p>
             <p className="mt-4 text-muted-foreground leading-relaxed">
               "Talent is not enough. The players who reach BVO level are the ones who train with intention every single rep. My job is to make sure that intention has the right system behind it."
@@ -45,7 +45,7 @@ const Coach = () => {
             <dl className="grid grid-cols-3 gap-px bg-border mt-12">
               {[
                 { k: "10+", v: "Years Coaching" },
-                { k: "UEFA", v: "Certified" },
+                { k: "200+", v: "Players Trained" },
                 { k: "NL", v: "Based" },
               ].map((s) => (
                 <div key={s.v} className="bg-background p-5">

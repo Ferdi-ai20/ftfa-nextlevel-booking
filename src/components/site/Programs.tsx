@@ -42,7 +42,7 @@ const Programs = () => {
             </h2>
           </div>
           <p className="text-muted-foreground max-w-sm">
-            Every program is built on the same principle: only what produces real, measurable progression.
+            One principle across every program: only what produces real progression.
           </p>
         </div>
 
