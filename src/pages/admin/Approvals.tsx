@@ -23,6 +23,7 @@ const Approvals = () => {
   const [unlinkedPlayers, setUnlinkedPlayers] = useState<Player[]>([]);
   const [loading, setLoading] = useState(true);
   const [linking, setLinking] = useState<Profile | null>(null);
+  const [viewing, setViewing] = useState<Profile | null>(null);
   const [search, setSearch] = useState("");
 
   const load = async () => {
@@ -76,6 +77,14 @@ const Approvals = () => {
     void load();
   };
 
+  const rejectProfile = async (p: Profile) => {
+    if (!confirm(`Reject and remove signup for "${p.full_name || p.id}"?\n\nThis deletes their profile. They can sign up again later.`)) return;
+    const { error } = await supabase.from("profiles").delete().eq("id", p.id);
+    if (error) return toast.error(error.message);
+    toast.success("Signup rejected.");
+    void load();
+  };
+
   const filteredPlayers = useMemo(
     () =>
       unlinkedPlayers.filter((p) =>
@@ -108,16 +117,28 @@ const Approvals = () => {
                 <div className="font-medium">{p.full_name || <span className="text-muted-foreground">No name</span>}</div>
                 <div className="text-xs text-muted-foreground font-mono break-all">{p.id}</div>
               </div>
-              <div className="md:col-span-3 text-sm">{p.phone || <span className="text-muted-foreground">—</span>}</div>
-              <div className="md:col-span-3 text-xs text-muted-foreground">
+              <div className="md:col-span-2 text-sm">{p.phone || <span className="text-muted-foreground">—</span>}</div>
+              <div className="md:col-span-2 text-xs text-muted-foreground">
                 Signed up {new Date(p.created_at).toLocaleDateString()}
               </div>
-              <div className="md:col-span-2 flex justify-end">
+              <div className="md:col-span-4 flex flex-wrap gap-2 justify-end">
+                <button
+                  onClick={() => setViewing(p)}
+                  className="text-[10px] uppercase tracking-widest border border-border px-3 py-2 hover:border-foreground/40"
+                >
+                  View details
+                </button>
+                <button
+                  onClick={() => rejectProfile(p)}
+                  className="text-[10px] uppercase tracking-widest border border-destructive/40 text-destructive px-3 py-2 hover:bg-destructive/10"
+                >
+                  Reject
+                </button>
                 <button
                   onClick={() => setLinking(p)}
                   className="text-[10px] uppercase tracking-widest bg-primary text-primary-foreground px-3 py-2 hover:bg-primary/90"
                 >
-                  Link to player…
+                  Approve & link →
                 </button>
               </div>
             </div>
@@ -180,6 +201,54 @@ const Approvals = () => {
                   ))
                 )}
               </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {viewing && (
+        <div className="fixed inset-0 z-50 bg-background/80 backdrop-blur grid place-items-center p-4 overflow-auto">
+          <div className="bg-card border border-border w-full max-w-lg p-6 space-y-4">
+            <div className="flex items-center justify-between">
+              <div className="display-font text-2xl uppercase">Signup details</div>
+              <button
+                onClick={() => setViewing(null)}
+                className="text-xs uppercase tracking-widest text-muted-foreground hover:text-foreground"
+              >
+                ✕ Close
+              </button>
+            </div>
+            <dl className="text-sm space-y-3">
+              <div>
+                <dt className="text-[10px] uppercase tracking-widest text-muted-foreground">Name</dt>
+                <dd>{viewing.full_name || "—"}</dd>
+              </div>
+              <div>
+                <dt className="text-[10px] uppercase tracking-widest text-muted-foreground">Phone</dt>
+                <dd>{viewing.phone || "—"}</dd>
+              </div>
+              <div>
+                <dt className="text-[10px] uppercase tracking-widest text-muted-foreground">Signed up</dt>
+                <dd>{new Date(viewing.created_at).toLocaleString()}</dd>
+              </div>
+              <div>
+                <dt className="text-[10px] uppercase tracking-widest text-muted-foreground">User ID</dt>
+                <dd className="font-mono text-xs break-all">{viewing.id}</dd>
+              </div>
+            </dl>
+            <div className="flex gap-2 pt-2 border-t border-border">
+              <button
+                onClick={() => { const p = viewing; setViewing(null); rejectProfile(p); }}
+                className="flex-1 text-xs uppercase tracking-widest border border-destructive/40 text-destructive py-2.5 hover:bg-destructive/10"
+              >
+                Reject
+              </button>
+              <button
+                onClick={() => { setLinking(viewing); setViewing(null); }}
+                className="flex-1 bg-primary text-primary-foreground py-2.5 text-xs uppercase tracking-widest font-semibold hover:bg-primary/90"
+              >
+                Approve & link →
+              </button>
             </div>
           </div>
         </div>
