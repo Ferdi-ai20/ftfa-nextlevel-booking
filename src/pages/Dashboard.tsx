@@ -86,6 +86,10 @@ const Dashboard = () => {
     status: Confirmation["status"],
     extras?: { alt_from?: string; alt_to?: string; note?: string }
   ) => {
+    if (locked) {
+      toast.error("Deadline passed (Wednesday 20:00). Contact your coach to change your response.");
+      return;
+    }
     const existing = confirmations.find((c) => c.player_id === playerId && c.session_date === sessionDate);
     if (existing?.locked) {
       toast.error("This response is locked by your coach. Contact them to change it.");
@@ -213,11 +217,11 @@ const Dashboard = () => {
         <section>
           <div className="text-[11px] uppercase tracking-[0.3em] text-primary">/ This Sunday</div>
           <h1 className="display-font text-5xl md:text-6xl uppercase mt-2">{fmtSunday(sunday)}</h1>
-          <div className={`mt-4 inline-flex items-center gap-3 border px-4 py-2 ${locked ? "border-amber-500/50 bg-amber-500/10 text-amber-400" : "border-primary/40 bg-primary/5 text-primary"}`}>
+          <div className={`mt-4 inline-flex items-center gap-3 border px-4 py-2 ${locked ? "border-destructive/50 bg-destructive/10 text-destructive" : "border-primary/40 bg-primary/5 text-primary"}`}>
             <span className="w-2 h-2 rounded-full bg-current" />
             <span className="text-xs uppercase tracking-widest">
               {locked
-                ? "Deadline passed — late responses still accepted"
+                ? "Deadline passed — contact your coach"
                 : `Respond before ${deadline.toLocaleDateString("en-GB", { weekday: "short" })} ${deadline.toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit" })}`}
             </span>
           </div>
@@ -241,11 +245,12 @@ const Dashboard = () => {
             const slot = slots.find((s) => s.player_id === p.id);
             const cf = confirmations.find((c) => c.player_id === p.id && c.session_date === sessionDate);
             return (
-              <PlayerCard
+          <PlayerCard
                 key={p.id}
                 player={p}
                 slot={slot}
                 confirmation={cf}
+                deadlineLocked={locked}
                 onRespond={respond}
                 onSavePreferredTime={savePreferredTime}
               />
@@ -396,12 +401,14 @@ const PlayerCard = ({
   player,
   slot,
   confirmation,
+  deadlineLocked,
   onRespond,
   onSavePreferredTime,
 }: {
   player: Player;
   slot: Slot | undefined;
   confirmation: Confirmation | undefined;
+  deadlineLocked: boolean;
   onRespond: (
     id: string,
     status: Confirmation["status"],
@@ -420,6 +427,7 @@ const PlayerCard = ({
   const [savingPref, setSavingPref] = useState(false);
 
   const recordLocked = confirmation?.locked === true;
+  const buttonsDisabled = recordLocked || deadlineLocked;
   const age = ageFromBirthdate(player.birthdate);
 
   const handle = async (status: Confirmation["status"], extras?: { alt_from?: string; alt_to?: string; note?: string }) => {
@@ -473,23 +481,28 @@ const PlayerCard = ({
             🔒 Locked by coach — contact them to change this week's response
           </div>
         )}
+        {!recordLocked && deadlineLocked && (
+          <div className="mb-4 text-[11px] uppercase tracking-widest text-destructive border border-destructive/40 bg-destructive/10 px-3 py-2">
+            🔒 Deadline passed (Wed 20:00) — contact your coach to change your response
+          </div>
+        )}
         <div className="grid sm:grid-cols-3 gap-3">
           <button
-            disabled={recordLocked || pending !== null}
+            disabled={buttonsDisabled || pending !== null}
             onClick={() => handle("attending")}
             className={`px-4 py-4 text-xs uppercase tracking-widest font-semibold border transition-colors ${confirmation?.status === "attending" ? "bg-primary text-primary-foreground border-primary" : "border-border hover:border-foreground/40"} disabled:opacity-40`}
           >
             {pending === "attending" ? "Saving…" : "✅ Attending"}
           </button>
           <button
-            disabled={recordLocked || pending !== null}
+            disabled={buttonsDisabled || pending !== null}
             onClick={() => handle("not_attending")}
             className={`px-4 py-4 text-xs uppercase tracking-widest font-semibold border transition-colors ${confirmation?.status === "not_attending" ? "bg-destructive text-destructive-foreground border-destructive" : "border-border hover:border-foreground/40"} disabled:opacity-40`}
           >
             {pending === "not_attending" ? "Saving…" : "❌ Not attending"}
           </button>
           <button
-            disabled={recordLocked || pending !== null}
+            disabled={buttonsDisabled || pending !== null}
             onClick={() => setShowAlt((v) => !v)}
             className={`px-4 py-4 text-xs uppercase tracking-widest font-semibold border transition-colors ${confirmation?.status === "different_time" || showAlt ? "bg-amber-500 text-background border-amber-500" : "border-border hover:border-foreground/40"} disabled:opacity-40`}
           >
@@ -527,7 +540,7 @@ const PlayerCard = ({
               />
             </div>
             <button
-              disabled={pending !== null}
+              disabled={buttonsDisabled || pending !== null}
               onClick={async () => {
                 await handle("different_time", { alt_from: from, alt_to: to, note });
                 setShowAlt(false);
