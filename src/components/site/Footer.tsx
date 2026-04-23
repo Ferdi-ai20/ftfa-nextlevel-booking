@@ -28,7 +28,7 @@ const Footer = () => {
           <div className="md:col-span-4">
             <div className="text-[11px] uppercase tracking-[0.25em] text-primary mb-4">Direct Contact</div>
             <a
-              href="https://wa.me/31600000000"
+              href="https://wa.me/31621275348"
               target="_blank"
               rel="noreferrer"
               className="group flex items-center justify-between border border-border p-5 hover:border-primary transition-colors"
@@ -36,6 +36,7 @@ const Footer = () => {
               <div>
                 <div className="text-[10px] uppercase tracking-widest text-muted-foreground">WhatsApp</div>
                 <div className="display-font text-2xl uppercase mt-1">Message Us</div>
+                <div className="text-xs text-muted-foreground mt-1">+31 6 21275348</div>
               </div>
               <span className="text-2xl text-primary transition-transform group-hover:translate-x-1">→</span>
             </a>

@@ -1,6 +1,7 @@
-import { NavLink, Outlet, useNavigate } from "react-router-dom";
-import { useEffect } from "react";
+import { NavLink, Outlet, useNavigate, Link } from "react-router-dom";
+import { useEffect, useState } from "react";
 import { useAuth } from "@/hooks/useAuth";
+import { supabase } from "@/integrations/supabase/client";
 
 const links = [
   { to: "/admin", end: true, label: "Sunday Planning" },
@@ -15,10 +16,25 @@ const links = [
 const AdminShell = () => {
   const { session, isAdmin, loading, signOut } = useAuth();
   const navigate = useNavigate();
+  const [pendingApprovals, setPendingApprovals] = useState(0);
 
   useEffect(() => {
     if (!loading && !session) navigate("/auth?redirect=/admin", { replace: true });
   }, [loading, session, navigate]);
+
+  useEffect(() => {
+    if (!isAdmin) return;
+    const loadCount = async () => {
+      const { data: profiles } = await supabase.from("profiles").select("id");
+      const { data: players } = await supabase.from("players").select("parent_user_id");
+      if (!profiles) return;
+      const linked = new Set((players ?? []).map((p) => p.parent_user_id).filter(Boolean));
+      setPendingApprovals(profiles.filter((p) => !linked.has(p.id)).length);
+    };
+    loadCount();
+    const interval = setInterval(loadCount, 30000);
+    return () => clearInterval(interval);
+  }, [isAdmin]);
 
   if (loading) return <div className="min-h-screen grid place-items-center bg-background">Loading…</div>;
   if (!session) return null;
@@ -56,14 +72,19 @@ const AdminShell = () => {
               to={l.to}
               end={l.end}
               className={({ isActive }) =>
-                `block px-4 py-2.5 text-xs uppercase tracking-widest border-l-2 transition-colors ${
+                `flex items-center justify-between px-4 py-2.5 text-xs uppercase tracking-widest border-l-2 transition-colors ${
                   isActive
                     ? "border-primary text-foreground bg-primary/5"
                     : "border-transparent text-muted-foreground hover:text-foreground hover:border-border"
                 }`
               }
             >
-              {l.label}
+              <span>{l.label}</span>
+              {l.to === "/admin/approvals" && pendingApprovals > 0 && (
+                <span className="ml-2 inline-flex items-center justify-center min-w-[20px] h-5 px-1.5 rounded-full bg-primary text-primary-foreground text-[10px] font-bold">
+                  {pendingApprovals}
+                </span>
+              )}
             </NavLink>
           ))}
         </nav>
@@ -93,7 +114,7 @@ const AdminShell = () => {
                 to={l.to}
                 end={l.end}
                 className={({ isActive }) =>
-                  `px-3 py-2 text-[10px] uppercase tracking-widest whitespace-nowrap border ${
+                  `relative px-3 py-2 text-[10px] uppercase tracking-widest whitespace-nowrap border ${
                     isActive
                       ? "border-primary bg-primary/10 text-primary"
                       : "border-border text-muted-foreground"
@@ -101,10 +122,26 @@ const AdminShell = () => {
                 }
               >
                 {l.label}
+                {l.to === "/admin/approvals" && pendingApprovals > 0 && (
+                  <span className="ml-1.5 inline-flex items-center justify-center min-w-[16px] h-4 px-1 rounded-full bg-primary text-primary-foreground text-[9px] font-bold">
+                    {pendingApprovals}
+                  </span>
+                )}
               </NavLink>
             ))}
           </nav>
         </div>
+
+        {pendingApprovals > 0 && (
+          <Link
+            to="/admin/approvals"
+            className="block bg-primary/10 border-b border-primary/30 px-6 md:px-10 py-3 text-xs md:text-sm hover:bg-primary/15 transition-colors"
+          >
+            <span className="font-semibold">{pendingApprovals}</span>{" "}
+            new parent signup{pendingApprovals === 1 ? "" : "s"} waiting for approval{" "}
+            <span className="text-primary font-semibold ml-1">→ Review</span>
+          </Link>
+        )}
 
         <div className="p-6 md:p-10">
           <Outlet />

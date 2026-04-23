@@ -44,7 +44,7 @@ const Hero = () => {
             <span className="text-stroke">Real</span> Development.
           </h1>
           <p className="mt-8 max-w-xl text-base md:text-lg text-muted-foreground leading-relaxed">
-            For players who want to reach BVO level. High-level techniektraining and intuïtieve voetbalvisie — built for serious players only.
+            Built for players chasing pro level. Elite football technique and game intelligence — nothing else.
           </p>
 
           <div className="mt-10 flex flex-col sm:flex-row gap-3">
