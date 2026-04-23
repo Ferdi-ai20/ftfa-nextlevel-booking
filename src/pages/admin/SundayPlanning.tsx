@@ -35,6 +35,39 @@ const SundayPlanning = () => {
     void load();
   }, [sessionDate]);
 
+  // Realtime: keep confirmations in sync as parents respond
+  useEffect(() => {
+    const channel = supabase
+      .channel(`weekly_confirmations_${sessionDate}`)
+      .on(
+        "postgres_changes",
+        {
+          event: "*",
+          schema: "public",
+          table: "weekly_confirmations",
+          filter: `session_date=eq.${sessionDate}`,
+        },
+        (payload) => {
+          setConfirms((prev) => {
+            if (payload.eventType === "DELETE") {
+              const oldRow = payload.old as Confirmation;
+              return prev.filter((c) => c.player_id !== oldRow.player_id);
+            }
+            const newRow = payload.new as Confirmation;
+            const exists = prev.some((c) => c.player_id === newRow.player_id);
+            if (exists) {
+              return prev.map((c) => (c.player_id === newRow.player_id ? { ...c, ...newRow } : c));
+            }
+            return [...prev, newRow];
+          });
+        }
+      )
+      .subscribe();
+    return () => {
+      void supabase.removeChannel(channel);
+    };
+  }, [sessionDate]);
+
   const load = async () => {
     setLoading(true);
     const [{ data: sl }, { data: cf }] = await Promise.all([
