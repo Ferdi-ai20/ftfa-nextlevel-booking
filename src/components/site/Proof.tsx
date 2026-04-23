@@ -1,5 +1,5 @@
 import { motion } from "framer-motion";
-
+import { clubLogos } from "./ClubLogos";
 const testimonials = [
   {
     quote: "Ferdi changed how I think about the game. The technical detail is on another level — within 6 months I was invited to BVO trials.",
@@ -21,7 +21,7 @@ const testimonials = [
   },
 ];
 
-const clubs = ["AJAX", "PSV", "FEYENOORD", "AZ", "UTRECHT", "VITESSE", "TWENTE", "HEERENVEEN"];
+
 
 const Proof = () => {
   return (
@@ -57,11 +57,12 @@ const Proof = () => {
           <div className="text-[11px] uppercase tracking-[0.3em] text-muted-foreground text-center mb-8">
             Players placed at
           </div>
-          <div className="flex flex-wrap justify-center items-center gap-x-10 gap-y-4">
-            {clubs.map((c) => (
-              <div key={c} className="display-font text-2xl md:text-3xl text-muted-foreground/70 hover:text-foreground transition-colors">
-                {c}
-              </div>
+          <div className="flex flex-wrap justify-center items-center gap-x-10 gap-y-6">
+            {clubLogos.map(({ name, Logo }) => (
+              <Logo
+                key={name}
+                className="h-9 w-auto text-muted-foreground/70 hover:text-foreground transition-colors"
+              />
             ))}
           </div>
         </div>
