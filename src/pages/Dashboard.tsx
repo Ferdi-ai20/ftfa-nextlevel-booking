@@ -86,11 +86,11 @@ const Dashboard = () => {
     status: Confirmation["status"],
     extras?: { alt_from?: string; alt_to?: string; note?: string }
   ) => {
-    if (locked) {
-      toast.error("Deadline passed. Contact your coach.");
+    const existing = confirmations.find((c) => c.player_id === playerId && c.session_date === sessionDate);
+    if (existing?.locked) {
+      toast.error("This response is locked by your coach. Contact them to change it.");
       return;
     }
-    const existing = confirmations.find((c) => c.player_id === playerId && c.session_date === sessionDate);
     const payload = {
       player_id: playerId,
       session_date: sessionDate,
@@ -132,6 +132,33 @@ const Dashboard = () => {
       }
     }
     toast.success("Response saved");
+  };
+
+  const savePreferredTime = async (
+    playerId: string,
+    from: string,
+    to: string,
+  ) => {
+    const { error } = await supabase
+      .from("players")
+      .update({
+        preferred_time_from: from || null,
+        preferred_time_to: to || null,
+      })
+      .eq("id", playerId);
+    if (error) {
+      console.error("savePreferredTime error", error);
+      toast.error(error.message || "Could not save preferred time.");
+      return;
+    }
+    setPlayers((prev) =>
+      prev.map((p) =>
+        p.id === playerId
+          ? { ...p, preferred_time_from: from || null, preferred_time_to: to || null }
+          : p,
+      ),
+    );
+    toast.success("Preferred time saved");
   };
 
   const saveProfile = async () => {
