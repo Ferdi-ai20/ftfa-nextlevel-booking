@@ -86,6 +86,24 @@ const BookingWindows = () => {
     void load();
   };
 
+  const [notifying, setNotifying] = useState<string | null>(null);
+  const notify = async (w: Window) => {
+    if (!confirm(`Send email notification to all eligible users for ${w.date}?`)) return;
+    setNotifying(w.id);
+    try {
+      const { data, error } = await supabase.functions.invoke("notify-booking-window", {
+        body: { windowId: w.id },
+      });
+      if (error) throw error;
+      const r = data as { total: number; sent: number; failed: number };
+      toast.success(`Notified ${r.sent} of ${r.total} eligible users${r.failed ? ` (${r.failed} failed)` : ""}`);
+    } catch (e: any) {
+      toast.error(e?.message ?? "Failed to send notifications");
+    } finally {
+      setNotifying(null);
+    }
+  };
+
   return (
     <div className="space-y-6">
       <header className="flex items-end justify-between gap-4 flex-wrap">
@@ -124,12 +142,20 @@ const BookingWindows = () => {
                     </div>
                     {w.message && <div className="text-sm mt-2 text-muted-foreground">"{w.message}"</div>}
                   </div>
-                  <div className="flex gap-2">
+                  <div className="flex gap-2 flex-wrap">
                     <button
                       onClick={() => toggleOpen(w)}
                       className={`text-[10px] uppercase tracking-widest border px-3 py-1.5 ${w.is_open ? "border-primary text-primary" : "border-border text-muted-foreground"}`}
                     >
                       {w.is_open ? "Open" : "Closed"}
+                    </button>
+                    <button
+                      onClick={() => notify(w)}
+                      disabled={notifying === w.id || !w.is_open}
+                      className="text-[10px] uppercase tracking-widest border border-primary/60 text-primary px-3 py-1.5 hover:bg-primary/10 disabled:opacity-40"
+                      title={w.is_open ? "Email all eligible users" : "Open the window first"}
+                    >
+                      {notifying === w.id ? "Sending…" : "Notify"}
                     </button>
                     <button
                       onClick={() => remove(w)}

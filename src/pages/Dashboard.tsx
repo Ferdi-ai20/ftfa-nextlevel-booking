@@ -110,6 +110,22 @@ const Dashboard = () => {
     toast.success("Profile updated.");
   };
 
+  const [requestText, setRequestText] = useState("");
+  const [requestPlayerId, setRequestPlayerId] = useState<string | null>(null);
+  const submitRequest = async () => {
+    if (!requestPlayerId || !requestText.trim()) return;
+    const { error } = await supabase.from("notes").insert({
+      subject_type: "player",
+      subject_id: requestPlayerId,
+      author_id: session!.user.id,
+      body: `[CHANGE REQUEST from ${session!.user.email}] ${requestText.trim()}`,
+    });
+    if (error) return toast.error(error.message);
+    toast.success("Request sent to your coach.");
+    setRequestText("");
+    setRequestPlayerId(null);
+  };
+
   if (loading || !session) {
     return <div className="min-h-screen grid place-items-center bg-background text-foreground">Loading…</div>;
   }
