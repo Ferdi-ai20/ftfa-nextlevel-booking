@@ -121,7 +121,7 @@ const WaitlistForm = ({ variant = "section" }: Props) => {
   }
 
   return (
-    <Wrapper>
+    <Wrapper variant={variant}>
       {variant === "page" && (
         <div className="mb-8">
           <Link to="/" className="text-xs uppercase tracking-widest text-muted-foreground hover:text-foreground">
@@ -334,5 +334,17 @@ const Field = ({ label, children }: { label: string; children: React.ReactNode }
     {children}
   </div>
 );
+
+const Wrapper = ({ variant, children }: { variant: "section" | "page"; children: React.ReactNode }) =>
+  variant === "page" ? (
+    <main className="min-h-screen bg-background text-foreground py-16">
+      <div className="container max-w-4xl">{children}</div>
+    </main>
+  ) : (
+    <section id="booking" className="relative py-24 md:py-32 border-b border-border">
+      <div className="absolute inset-0 grid-bg opacity-40" />
+      <div className="container relative">{children}</div>
+    </section>
+  );
 
 export default WaitlistForm;
