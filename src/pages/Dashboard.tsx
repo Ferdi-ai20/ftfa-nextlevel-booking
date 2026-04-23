@@ -18,6 +18,8 @@ type Player = {
   level: string | null;
   position: string | null;
   training_type?: string | null;
+  preferred_time_from?: string | null;
+  preferred_time_to?: string | null;
 };
 
 type Slot = { id: string; player_id: string; slot_time: string; duration_minutes: number };
@@ -84,11 +86,11 @@ const Dashboard = () => {
     status: Confirmation["status"],
     extras?: { alt_from?: string; alt_to?: string; note?: string }
   ) => {
-    if (locked) {
-      toast.error("Deadline passed. Contact your coach.");
+    const existing = confirmations.find((c) => c.player_id === playerId && c.session_date === sessionDate);
+    if (existing?.locked) {
+      toast.error("This response is locked by your coach. Contact them to change it.");
       return;
     }
-    const existing = confirmations.find((c) => c.player_id === playerId && c.session_date === sessionDate);
     const payload = {
       player_id: playerId,
       session_date: sessionDate,
@@ -130,6 +132,33 @@ const Dashboard = () => {
       }
     }
     toast.success("Response saved");
+  };
+
+  const savePreferredTime = async (
+    playerId: string,
+    from: string,
+    to: string,
+  ) => {
+    const { error } = await supabase
+      .from("players")
+      .update({
+        preferred_time_from: from || null,
+        preferred_time_to: to || null,
+      })
+      .eq("id", playerId);
+    if (error) {
+      console.error("savePreferredTime error", error);
+      toast.error(error.message || "Could not save preferred time.");
+      return;
+    }
+    setPlayers((prev) =>
+      prev.map((p) =>
+        p.id === playerId
+          ? { ...p, preferred_time_from: from || null, preferred_time_to: to || null }
+          : p,
+      ),
+    );
+    toast.success("Preferred time saved");
   };
 
   const saveProfile = async () => {
@@ -184,11 +213,11 @@ const Dashboard = () => {
         <section>
           <div className="text-[11px] uppercase tracking-[0.3em] text-primary">/ This Sunday</div>
           <h1 className="display-font text-5xl md:text-6xl uppercase mt-2">{fmtSunday(sunday)}</h1>
-          <div className={`mt-4 inline-flex items-center gap-3 border px-4 py-2 ${locked ? "border-destructive/50 bg-destructive/10 text-destructive" : "border-primary/40 bg-primary/5 text-primary"}`}>
+          <div className={`mt-4 inline-flex items-center gap-3 border px-4 py-2 ${locked ? "border-amber-500/50 bg-amber-500/10 text-amber-400" : "border-primary/40 bg-primary/5 text-primary"}`}>
             <span className="w-2 h-2 rounded-full bg-current" />
             <span className="text-xs uppercase tracking-widest">
               {locked
-                ? "Locked — contact coach to change"
+                ? "Deadline passed — late responses still accepted"
                 : `Respond before ${deadline.toLocaleDateString("en-GB", { weekday: "short" })} ${deadline.toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit" })}`}
             </span>
           </div>
@@ -211,7 +240,16 @@ const Dashboard = () => {
           players.map((p) => {
             const slot = slots.find((s) => s.player_id === p.id);
             const cf = confirmations.find((c) => c.player_id === p.id && c.session_date === sessionDate);
-            return <PlayerCard key={p.id} player={p} slot={slot} confirmation={cf} locked={locked} onRespond={respond} />;
+            return (
+              <PlayerCard
+                key={p.id}
+                player={p}
+                slot={slot}
+                confirmation={cf}
+                onRespond={respond}
+                onSavePreferredTime={savePreferredTime}
+              />
+            );
           })
         )}
 
@@ -358,25 +396,40 @@ const PlayerCard = ({
   player,
   slot,
   confirmation,
-  locked,
   onRespond,
+  onSavePreferredTime,
 }: {
   player: Player;
   slot: Slot | undefined;
   confirmation: Confirmation | undefined;
-  locked: boolean;
   onRespond: (
     id: string,
     status: Confirmation["status"],
     extras?: { alt_from?: string; alt_to?: string; note?: string }
   ) => void;
+  onSavePreferredTime: (id: string, from: string, to: string) => void;
 }) => {
   const [showAlt, setShowAlt] = useState(false);
   const [from, setFrom] = useState(confirmation?.alt_from ?? "");
   const [to, setTo] = useState(confirmation?.alt_to ?? "");
   const [note, setNote] = useState(confirmation?.note ?? "");
+  const [pending, setPending] = useState<null | Confirmation["status"]>(null);
 
+  const [prefFrom, setPrefFrom] = useState(player.preferred_time_from ?? "");
+  const [prefTo, setPrefTo] = useState(player.preferred_time_to ?? "");
+  const [savingPref, setSavingPref] = useState(false);
+
+  const recordLocked = confirmation?.locked === true;
   const age = ageFromBirthdate(player.birthdate);
+
+  const handle = async (status: Confirmation["status"], extras?: { alt_from?: string; alt_to?: string; note?: string }) => {
+    setPending(status);
+    try {
+      await onRespond(player.id, status, extras);
+    } finally {
+      setPending(null);
+    }
+  };
 
   return (
     <motion.section
@@ -407,7 +460,7 @@ const PlayerCard = ({
             </div>
           </div>
         ) : (
-          <div className="text-sm text-muted-foreground">No fixed Sunday slot assigned.</div>
+          <div className="text-sm text-muted-foreground">No fixed Sunday slot — let your coach know your preferred time below.</div>
         )}
         <div className="mt-4">
           <CalendlyButton trainingType={(player as any).training_type} />
@@ -415,23 +468,28 @@ const PlayerCard = ({
       </div>
 
       <div className="mt-6">
+        {recordLocked && (
+          <div className="mb-4 text-[11px] uppercase tracking-widest text-amber-400 border border-amber-500/40 bg-amber-500/10 px-3 py-2">
+            🔒 Locked by coach — contact them to change this week's response
+          </div>
+        )}
         <div className="grid sm:grid-cols-3 gap-3">
           <button
-            disabled={locked}
-            onClick={() => onRespond(player.id, "attending")}
+            disabled={recordLocked || pending !== null}
+            onClick={() => handle("attending")}
             className={`px-4 py-4 text-xs uppercase tracking-widest font-semibold border transition-colors ${confirmation?.status === "attending" ? "bg-primary text-primary-foreground border-primary" : "border-border hover:border-foreground/40"} disabled:opacity-40`}
           >
-            ✅ Attending
+            {pending === "attending" ? "Saving…" : "✅ Attending"}
           </button>
           <button
-            disabled={locked}
-            onClick={() => onRespond(player.id, "not_attending")}
+            disabled={recordLocked || pending !== null}
+            onClick={() => handle("not_attending")}
             className={`px-4 py-4 text-xs uppercase tracking-widest font-semibold border transition-colors ${confirmation?.status === "not_attending" ? "bg-destructive text-destructive-foreground border-destructive" : "border-border hover:border-foreground/40"} disabled:opacity-40`}
           >
-            ❌ Not attending
+            {pending === "not_attending" ? "Saving…" : "❌ Not attending"}
           </button>
           <button
-            disabled={locked}
+            disabled={recordLocked || pending !== null}
             onClick={() => setShowAlt((v) => !v)}
             className={`px-4 py-4 text-xs uppercase tracking-widest font-semibold border transition-colors ${confirmation?.status === "different_time" || showAlt ? "bg-amber-500 text-background border-amber-500" : "border-border hover:border-foreground/40"} disabled:opacity-40`}
           >
@@ -469,16 +527,59 @@ const PlayerCard = ({
               />
             </div>
             <button
-              onClick={() => {
-                onRespond(player.id, "different_time", { alt_from: from, alt_to: to, note });
+              disabled={pending !== null}
+              onClick={async () => {
+                await handle("different_time", { alt_from: from, alt_to: to, note });
                 setShowAlt(false);
               }}
-              className="sm:col-span-3 bg-primary text-primary-foreground py-3 text-xs uppercase tracking-widest font-semibold hover:bg-primary/90"
+              className="sm:col-span-3 bg-primary text-primary-foreground py-3 text-xs uppercase tracking-widest font-semibold hover:bg-primary/90 disabled:opacity-40"
             >
-              Submit alternative time
+              {pending === "different_time" ? "Saving…" : "Submit alternative time"}
             </button>
           </div>
         )}
+      </div>
+
+      {/* Preferred training time */}
+      <div className="mt-8 border-t border-border pt-6">
+        <div className="text-[11px] uppercase tracking-[0.25em] text-muted-foreground">My preferred training time</div>
+        <p className="text-xs text-muted-foreground mt-1">
+          The window you'd ideally train in each Sunday. Your coach uses this when planning the schedule.
+        </p>
+        <div className="mt-4 grid sm:grid-cols-3 gap-3">
+          <div>
+            <label className="text-[11px] uppercase tracking-[0.25em] text-muted-foreground">From</label>
+            <input
+              type="time"
+              value={prefFrom}
+              onChange={(e) => setPrefFrom(e.target.value)}
+              className="mt-2 w-full bg-background border border-border px-3 py-2 focus:border-primary focus:outline-none [color-scheme:dark]"
+            />
+          </div>
+          <div>
+            <label className="text-[11px] uppercase tracking-[0.25em] text-muted-foreground">Until</label>
+            <input
+              type="time"
+              value={prefTo}
+              onChange={(e) => setPrefTo(e.target.value)}
+              className="mt-2 w-full bg-background border border-border px-3 py-2 focus:border-primary focus:outline-none [color-scheme:dark]"
+            />
+          </div>
+          <button
+            disabled={savingPref}
+            onClick={async () => {
+              setSavingPref(true);
+              try {
+                await onSavePreferredTime(player.id, prefFrom, prefTo);
+              } finally {
+                setSavingPref(false);
+              }
+            }}
+            className="bg-primary text-primary-foreground px-4 py-3 text-xs uppercase tracking-widest font-semibold hover:bg-primary/90 disabled:opacity-40"
+          >
+            {savingPref ? "Saving…" : "Save preferred time"}
+          </button>
+        </div>
       </div>
     </motion.section>
   );

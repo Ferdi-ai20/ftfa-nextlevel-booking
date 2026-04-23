@@ -412,6 +412,8 @@ export type Database = {
           phone: string | null
           player_name: string
           position: string | null
+          preferred_time_from: string | null
+          preferred_time_to: string | null
           team: string | null
           training_type: Database["public"]["Enums"]["training_type"] | null
           updated_at: string
@@ -429,6 +431,8 @@ export type Database = {
           phone?: string | null
           player_name: string
           position?: string | null
+          preferred_time_from?: string | null
+          preferred_time_to?: string | null
           team?: string | null
           training_type?: Database["public"]["Enums"]["training_type"] | null
           updated_at?: string
@@ -446,6 +450,8 @@ export type Database = {
           phone?: string | null
           player_name?: string
           position?: string | null
+          preferred_time_from?: string | null
+          preferred_time_to?: string | null
           team?: string | null
           training_type?: Database["public"]["Enums"]["training_type"] | null
           updated_at?: string
