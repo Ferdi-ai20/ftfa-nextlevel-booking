@@ -414,74 +414,72 @@ const PlayerCard = ({
         </div>
       </div>
 
-      {slot && (
-        <div className="mt-6">
-          <div className="grid sm:grid-cols-3 gap-3">
+      <div className="mt-6">
+        <div className="grid sm:grid-cols-3 gap-3">
+          <button
+            disabled={locked}
+            onClick={() => onRespond(player.id, "attending")}
+            className={`px-4 py-4 text-xs uppercase tracking-widest font-semibold border transition-colors ${confirmation?.status === "attending" ? "bg-primary text-primary-foreground border-primary" : "border-border hover:border-foreground/40"} disabled:opacity-40`}
+          >
+            ✅ Attending
+          </button>
+          <button
+            disabled={locked}
+            onClick={() => onRespond(player.id, "not_attending")}
+            className={`px-4 py-4 text-xs uppercase tracking-widest font-semibold border transition-colors ${confirmation?.status === "not_attending" ? "bg-destructive text-destructive-foreground border-destructive" : "border-border hover:border-foreground/40"} disabled:opacity-40`}
+          >
+            ❌ Not attending
+          </button>
+          <button
+            disabled={locked}
+            onClick={() => setShowAlt((v) => !v)}
+            className={`px-4 py-4 text-xs uppercase tracking-widest font-semibold border transition-colors ${confirmation?.status === "different_time" || showAlt ? "bg-amber-500 text-background border-amber-500" : "border-border hover:border-foreground/40"} disabled:opacity-40`}
+          >
+            ⏰ Different time
+          </button>
+        </div>
+
+        {showAlt && (
+          <div className="mt-6 grid sm:grid-cols-3 gap-3">
+            <div>
+              <label className="text-[11px] uppercase tracking-[0.25em] text-muted-foreground">Available from</label>
+              <input
+                type="time"
+                value={from}
+                onChange={(e) => setFrom(e.target.value)}
+                className="mt-2 w-full bg-background border border-border px-3 py-2 focus:border-primary focus:outline-none [color-scheme:dark]"
+              />
+            </div>
+            <div>
+              <label className="text-[11px] uppercase tracking-[0.25em] text-muted-foreground">Until</label>
+              <input
+                type="time"
+                value={to}
+                onChange={(e) => setTo(e.target.value)}
+                className="mt-2 w-full bg-background border border-border px-3 py-2 focus:border-primary focus:outline-none [color-scheme:dark]"
+              />
+            </div>
+            <div>
+              <label className="text-[11px] uppercase tracking-[0.25em] text-muted-foreground">Note (optional)</label>
+              <input
+                value={note}
+                onChange={(e) => setNote(e.target.value)}
+                maxLength={200}
+                className="mt-2 w-full bg-background border border-border px-3 py-2 focus:border-primary focus:outline-none"
+              />
+            </div>
             <button
-              disabled={locked}
-              onClick={() => onRespond(player.id, "attending")}
-              className={`px-4 py-4 text-xs uppercase tracking-widest font-semibold border transition-colors ${confirmation?.status === "attending" ? "bg-primary text-primary-foreground border-primary" : "border-border hover:border-foreground/40"} disabled:opacity-40`}
+              onClick={() => {
+                onRespond(player.id, "different_time", { alt_from: from, alt_to: to, note });
+                setShowAlt(false);
+              }}
+              className="sm:col-span-3 bg-primary text-primary-foreground py-3 text-xs uppercase tracking-widest font-semibold hover:bg-primary/90"
             >
-              ✅ Attending
-            </button>
-            <button
-              disabled={locked}
-              onClick={() => onRespond(player.id, "not_attending")}
-              className={`px-4 py-4 text-xs uppercase tracking-widest font-semibold border transition-colors ${confirmation?.status === "not_attending" ? "bg-destructive text-destructive-foreground border-destructive" : "border-border hover:border-foreground/40"} disabled:opacity-40`}
-            >
-              ❌ Not attending
-            </button>
-            <button
-              disabled={locked}
-              onClick={() => setShowAlt((v) => !v)}
-              className={`px-4 py-4 text-xs uppercase tracking-widest font-semibold border transition-colors ${confirmation?.status === "different_time" || showAlt ? "bg-amber-500 text-background border-amber-500" : "border-border hover:border-foreground/40"} disabled:opacity-40`}
-            >
-              ⏰ Different time
+              Submit alternative time
             </button>
           </div>
-
-          {showAlt && (
-            <div className="mt-6 grid sm:grid-cols-3 gap-3">
-              <div>
-                <label className="text-[11px] uppercase tracking-[0.25em] text-muted-foreground">Available from</label>
-                <input
-                  type="time"
-                  value={from}
-                  onChange={(e) => setFrom(e.target.value)}
-                  className="mt-2 w-full bg-background border border-border px-3 py-2 focus:border-primary focus:outline-none [color-scheme:dark]"
-                />
-              </div>
-              <div>
-                <label className="text-[11px] uppercase tracking-[0.25em] text-muted-foreground">Until</label>
-                <input
-                  type="time"
-                  value={to}
-                  onChange={(e) => setTo(e.target.value)}
-                  className="mt-2 w-full bg-background border border-border px-3 py-2 focus:border-primary focus:outline-none [color-scheme:dark]"
-                />
-              </div>
-              <div>
-                <label className="text-[11px] uppercase tracking-[0.25em] text-muted-foreground">Note (optional)</label>
-                <input
-                  value={note}
-                  onChange={(e) => setNote(e.target.value)}
-                  maxLength={200}
-                  className="mt-2 w-full bg-background border border-border px-3 py-2 focus:border-primary focus:outline-none"
-                />
-              </div>
-              <button
-                onClick={() => {
-                  onRespond(player.id, "different_time", { alt_from: from, alt_to: to, note });
-                  setShowAlt(false);
-                }}
-                className="sm:col-span-3 bg-primary text-primary-foreground py-3 text-xs uppercase tracking-widest font-semibold hover:bg-primary/90"
-              >
-                Submit alternative time
-              </button>
-            </div>
-          )}
-        </div>
-      )}
+        )}
+      </div>
     </motion.section>
   );
 };
