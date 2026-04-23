@@ -77,6 +77,14 @@ const Approvals = () => {
     void load();
   };
 
+  const rejectProfile = async (p: Profile) => {
+    if (!confirm(`Reject and remove signup for "${p.full_name || p.id}"?\n\nThis deletes their profile. They can sign up again later.`)) return;
+    const { error } = await supabase.from("profiles").delete().eq("id", p.id);
+    if (error) return toast.error(error.message);
+    toast.success("Signup rejected.");
+    void load();
+  };
+
   const filteredPlayers = useMemo(
     () =>
       unlinkedPlayers.filter((p) =>
