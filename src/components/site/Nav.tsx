@@ -21,16 +21,24 @@ const Nav = () => {
           <a href="#programs" className="text-muted-foreground hover:text-foreground transition-colors">Programs</a>
           <a href="#coach" className="text-muted-foreground hover:text-foreground transition-colors">Coach</a>
           <a href="#booking" className="text-muted-foreground hover:text-foreground transition-colors">Waitlist</a>
-          <a href="#sunday" className="text-muted-foreground hover:text-foreground transition-colors">My Slot</a>
+          <a href="/dashboard" className="text-muted-foreground hover:text-foreground transition-colors">My Slot</a>
           <a href="#contact" className="text-muted-foreground hover:text-foreground transition-colors">Contact</a>
         </nav>
-        <a
-          href="#booking"
-          className="hidden sm:inline-flex items-center gap-2 bg-primary text-primary-foreground px-4 py-2 text-xs uppercase tracking-widest font-semibold hover:bg-primary/90 transition-colors"
-        >
-          Book Training
-          <span aria-hidden>→</span>
-        </a>
+        <div className="flex items-center gap-2">
+          <a
+            href="/auth"
+            className="hidden sm:inline-flex items-center text-xs uppercase tracking-widest text-muted-foreground hover:text-foreground px-3 py-2"
+          >
+            Sign in
+          </a>
+          <a
+            href="#booking"
+            className="hidden sm:inline-flex items-center gap-2 bg-primary text-primary-foreground px-4 py-2 text-xs uppercase tracking-widest font-semibold hover:bg-primary/90 transition-colors"
+          >
+            Join Waitlist
+            <span aria-hidden>→</span>
+          </a>
+        </div>
       </div>
     </motion.header>
   );
