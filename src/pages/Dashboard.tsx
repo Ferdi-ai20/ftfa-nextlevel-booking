@@ -84,7 +84,10 @@ const Dashboard = () => {
     status: Confirmation["status"],
     extras?: { alt_from?: string; alt_to?: string; note?: string }
   ) => {
-    if (locked) return toast.error("Deadline passed. Contact your coach.");
+    if (locked) {
+      toast.error("Deadline passed. Contact your coach.");
+      return;
+    }
     const existing = confirmations.find((c) => c.player_id === playerId && c.session_date === sessionDate);
     const payload = {
       player_id: playerId,
@@ -95,12 +98,38 @@ const Dashboard = () => {
       note: extras?.note ?? null,
       responded_by: session!.user.id,
     };
-    const { error } = existing
-      ? await supabase.from("weekly_confirmations").update(payload).eq("id", existing.id)
-      : await supabase.from("weekly_confirmations").insert(payload);
-    if (error) return toast.error(error.message);
-    toast.success("Saved.");
-    void loadAll();
+
+    if (existing) {
+      const { data, error } = await supabase
+        .from("weekly_confirmations")
+        .update(payload)
+        .eq("id", existing.id)
+        .select()
+        .maybeSingle();
+      if (error) {
+        console.error("respond update error", error);
+        toast.error(error.message || "Could not save your response.");
+        return;
+      }
+      if (data) {
+        setConfirmations((prev) => prev.map((c) => (c.id === data.id ? (data as Confirmation) : c)));
+      }
+    } else {
+      const { data, error } = await supabase
+        .from("weekly_confirmations")
+        .insert(payload)
+        .select()
+        .maybeSingle();
+      if (error) {
+        console.error("respond insert error", error);
+        toast.error(error.message || "Could not save your response.");
+        return;
+      }
+      if (data) {
+        setConfirmations((prev) => [data as Confirmation, ...prev]);
+      }
+    }
+    toast.success("Response saved");
   };
 
   const saveProfile = async () => {
