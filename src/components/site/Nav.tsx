@@ -111,12 +111,12 @@ const Nav = () => {
                 </a>
               ))}
             </nav>
-            <div className="p-4 border-t border-border space-y-2">
+            <div className="p-3 border-t border-border space-y-1.5">
               {isAdmin && (
                 <a
                   href="/admin/approvals"
                   onClick={() => setOpen(false)}
-                  className="block w-full text-center border border-primary/40 text-primary px-4 py-3 text-xs uppercase tracking-widest"
+                  className="block w-full text-center border border-primary/40 text-primary px-3 py-2.5 text-xs uppercase tracking-widest"
                 >
                   → Approvals
                 </a>
@@ -125,7 +125,7 @@ const Nav = () => {
                 <a
                   href="/auth"
                   onClick={() => setOpen(false)}
-                  className="block w-full text-center border border-border px-4 py-3 text-xs uppercase tracking-widest hover:border-foreground/40"
+                  className="block w-full text-center border border-border px-3 py-2.5 text-xs uppercase tracking-widest hover:border-foreground/40"
                 >
                   Sign in
                 </a>
@@ -133,7 +133,7 @@ const Nav = () => {
               <a
                 href="#booking"
                 onClick={() => setOpen(false)}
-                className="block w-full text-center bg-primary text-primary-foreground px-4 py-3 text-xs uppercase tracking-widest font-semibold"
+                className="block w-full text-center bg-primary text-primary-foreground px-3 py-2.5 text-xs uppercase tracking-widest font-semibold"
               >
                 Join Waitlist →
               </a>
