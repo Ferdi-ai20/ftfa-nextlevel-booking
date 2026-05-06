@@ -25,7 +25,7 @@ const testimonials = [
 
 const Proof = () => {
   return (
-    <section className="relative py-24 md:py-32 border-b border-border">
+    <section id="results" className="relative py-24 md:py-32 border-b border-border">
       <div className="container">
         <div className="text-xs uppercase tracking-[0.3em] text-primary mb-4">/ 05 — Proof</div>
         <h2 className="display-font text-5xl md:text-7xl uppercase leading-[0.9] max-w-4xl">
