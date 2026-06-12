@@ -38,23 +38,18 @@ const Applications = () => {
       .select("id")
       .eq("phone", a.phone ?? "___none___")
       .maybeSingle();
-    const updates: Array<Promise<unknown>> = [
-      supabase.from("applications").update({ status: "approved" }).eq("id", a.id),
-    ];
+    await supabase.from("applications").update({ status: "approved" }).eq("id", a.id);
     if (prof) {
-      updates.push(supabase.from("profiles").update({ status: "active" }).eq("id", prof.id));
-      updates.push(
-        supabase.from("players").insert({
-          parent_profile_id: prof.id,
-          player_name: a.player_name,
-          birth_year: a.birth_year,
-          club: a.club,
-          team: a.team,
-          position: a.position,
-        }),
-      );
+      await supabase.from("profiles").update({ status: "active" }).eq("id", prof.id);
+      await supabase.from("players").insert({
+        parent_profile_id: prof.id,
+        player_name: a.player_name,
+        birth_year: a.birth_year,
+        club: a.club,
+        team: a.team,
+        position: a.position,
+      });
     }
-    await Promise.all(updates);
     toast.success(prof ? "Goedgekeurd + speler aangemaakt" : "Goedgekeurd. Ouder moet nog account aanmaken met dit telefoonnummer.");
     void load();
   };
