@@ -337,6 +337,7 @@ const Calendar = () => {
           onVisibility={(v) => setVisibility(editing, v)}
           onCancelBooking={cancelBooking}
           onAcceptBooking={acceptBooking}
+          onSetPayment={setPayment}
           form={form}
           setForm={setForm}
         />
