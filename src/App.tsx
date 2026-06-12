@@ -8,15 +8,11 @@ import Index from "./pages/Index.tsx";
 import Auth from "./pages/Auth.tsx";
 import ResetPassword from "./pages/ResetPassword.tsx";
 import Dashboard from "./pages/Dashboard.tsx";
-import WaitlistPage from "./pages/WaitlistPage.tsx";
 import Unsubscribe from "./pages/Unsubscribe.tsx";
 import AdminShell from "./pages/admin/AdminShell.tsx";
-import SundayPlanning from "./pages/admin/SundayPlanning.tsx";
+import Calendar from "./pages/admin/Calendar.tsx";
+import Applications from "./pages/admin/Applications.tsx";
 import Players from "./pages/admin/Players.tsx";
-import Approvals from "./pages/admin/Approvals.tsx";
-import FixedPlayers from "./pages/admin/FixedPlayers.tsx";
-import Waitlist from "./pages/admin/Waitlist.tsx";
-import BookingWindows from "./pages/admin/BookingWindows.tsx";
 import Settings from "./pages/admin/Settings.tsx";
 import NotFound from "./pages/NotFound.tsx";
 
@@ -34,15 +30,11 @@ const App = () => (
             <Route path="/auth" element={<Auth />} />
             <Route path="/reset-password" element={<ResetPassword />} />
             <Route path="/dashboard" element={<Dashboard />} />
-            <Route path="/waitlist" element={<WaitlistPage />} />
             <Route path="/unsubscribe" element={<Unsubscribe />} />
             <Route path="/admin" element={<AdminShell />}>
-              <Route index element={<SundayPlanning />} />
+              <Route index element={<Calendar />} />
+              <Route path="applications" element={<Applications />} />
               <Route path="players" element={<Players />} />
-              <Route path="approvals" element={<Approvals />} />
-              <Route path="fixed" element={<FixedPlayers />} />
-              <Route path="waitlist" element={<Waitlist />} />
-              <Route path="bookings" element={<BookingWindows />} />
               <Route path="settings" element={<Settings />} />
             </Route>
             <Route path="*" element={<NotFound />} />

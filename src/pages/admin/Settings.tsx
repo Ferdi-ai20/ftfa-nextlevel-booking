@@ -110,13 +110,6 @@ const Settings = () => {
           </div>
         </div>
 
-        <div className="text-xs text-muted-foreground border-t border-border pt-4">
-          <strong>Webhook URL</strong> (paste this in Calendly → Integrations → Webhooks):
-          <div className="font-mono mt-2 break-all bg-background border border-border px-3 py-2">
-            https://kktuwaugntismqmvauvl.supabase.co/functions/v1/calendly-webhook
-          </div>
-          Subscribe to events: <code>invitee.created</code> and <code>invitee.canceled</code>.
-        </div>
       </div>
 
       <button

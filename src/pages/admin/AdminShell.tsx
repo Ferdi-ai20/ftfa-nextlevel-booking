@@ -4,19 +4,16 @@ import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
 
 const links = [
-  { to: "/admin", end: true, label: "Sunday" },
+  { to: "/admin", end: true, label: "Calendar" },
+  { to: "/admin/applications", label: "Applications" },
   { to: "/admin/players", label: "Players" },
-  { to: "/admin/approvals", label: "Approvals" },
-  { to: "/admin/fixed", label: "Fixed" },
-  { to: "/admin/waitlist", label: "Waitlist" },
-  { to: "/admin/bookings", label: "Bookings" },
   { to: "/admin/settings", label: "Settings" },
 ];
 
 const AdminShell = () => {
   const { session, isAdmin, loading, signOut } = useAuth();
   const navigate = useNavigate();
-  const [pendingApprovals, setPendingApprovals] = useState(0);
+  const [pendingApps, setPendingApps] = useState(0);
 
   useEffect(() => {
     if (!loading && !session) navigate("/auth?redirect=/admin", { replace: true });
@@ -25,11 +22,11 @@ const AdminShell = () => {
   useEffect(() => {
     if (!isAdmin) return;
     const loadCount = async () => {
-      const { data: profiles } = await supabase.from("profiles").select("id");
-      const { data: players } = await supabase.from("players").select("parent_user_id");
-      if (!profiles) return;
-      const linked = new Set((players ?? []).map((p) => p.parent_user_id).filter(Boolean));
-      setPendingApprovals(profiles.filter((p) => !linked.has(p.id)).length);
+      const { count } = await supabase
+        .from("applications")
+        .select("*", { count: "exact", head: true })
+        .eq("status", "pending");
+      setPendingApps(count ?? 0);
     };
     loadCount();
     const interval = setInterval(loadCount, 30000);
@@ -45,7 +42,7 @@ const AdminShell = () => {
         <div className="max-w-md text-center space-y-4">
           <div className="display-font text-3xl uppercase">Not authorized</div>
           <p className="text-muted-foreground text-sm">
-            {session.user.email} is not an admin. Contact the system owner to grant access.
+            {session.user.email} is not an admin.
           </p>
           <button
             onClick={signOut}
@@ -60,7 +57,6 @@ const AdminShell = () => {
 
   return (
     <main className="min-h-screen bg-background text-foreground flex">
-      {/* Desktop sidebar */}
       <aside className="hidden md:flex w-60 shrink-0 border-r border-border flex-col">
         <div className="p-6 border-b border-border">
           <div className="display-font text-2xl uppercase">FTFA</div>
@@ -81,9 +77,9 @@ const AdminShell = () => {
               }
             >
               <span>{l.label}</span>
-              {l.to === "/admin/approvals" && pendingApprovals > 0 && (
+              {l.to === "/admin/applications" && pendingApps > 0 && (
                 <span className="ml-2 inline-flex items-center justify-center min-w-[22px] h-[22px] px-1.5 rounded-full bg-primary text-primary-foreground text-[10px] font-bold">
-                  {pendingApprovals}
+                  {pendingApps}
                 </span>
               )}
             </NavLink>
@@ -100,7 +96,6 @@ const AdminShell = () => {
       </aside>
 
       <div className="flex-1 min-w-0">
-        {/* Mobile header: title + sign out */}
         <header className="md:hidden border-b border-border px-4 py-3 flex items-center justify-between gap-3 sticky top-0 bg-background z-30">
           <div className="display-font text-lg uppercase tracking-wide truncate">FTFA Admin</div>
           <button
@@ -111,7 +106,6 @@ const AdminShell = () => {
           </button>
         </header>
 
-        {/* Mobile horizontal tab bar */}
         <nav className="md:hidden border-b border-border bg-background sticky top-[57px] z-20 overflow-x-auto scrollbar-none">
           <div className="flex min-w-max">
             {links.map((l) => (
@@ -128,9 +122,9 @@ const AdminShell = () => {
                 }
               >
                 <span>{l.label}</span>
-                {l.to === "/admin/approvals" && pendingApprovals > 0 && (
+                {l.to === "/admin/applications" && pendingApps > 0 && (
                   <span className="inline-flex items-center justify-center min-w-[18px] h-[18px] px-1 rounded-full bg-primary text-primary-foreground text-[10px] font-bold">
-                    {pendingApprovals}
+                    {pendingApps}
                   </span>
                 )}
               </NavLink>
@@ -138,13 +132,13 @@ const AdminShell = () => {
           </div>
         </nav>
 
-        {pendingApprovals > 0 && (
+        {pendingApps > 0 && (
           <Link
-            to="/admin/approvals"
+            to="/admin/applications"
             className="block bg-primary/10 border-b border-primary/30 px-4 md:px-10 py-2.5 text-xs md:text-sm hover:bg-primary/15 transition-colors"
           >
-            <span className="font-semibold">{pendingApprovals}</span>{" "}
-            new parent signup{pendingApprovals === 1 ? "" : "s"} waiting for approval{" "}
+            <span className="font-semibold">{pendingApps}</span>{" "}
+            new application{pendingApps === 1 ? "" : "s"} waiting{" "}
             <span className="text-primary font-semibold ml-1">→ Review</span>
           </Link>
         )}
