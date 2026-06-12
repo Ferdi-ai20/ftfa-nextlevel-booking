@@ -38,6 +38,7 @@ type Booking = {
 };
 
 type Player = { id: string; player_name: string };
+type FB = { id: string; player_id: string; strengths: string | null; development_points: string | null; feedback_text: string | null; created_at: string };
 
 const Dashboard = () => {
   const { session, isAdmin, loading, signOut } = useAuth();
@@ -45,6 +46,7 @@ const Dashboard = () => {
   const [slots, setSlots] = useState<Slot[]>([]);
   const [bookings, setBookings] = useState<Booking[]>([]);
   const [players, setPlayers] = useState<Player[]>([]);
+  const [feedback, setFeedback] = useState<FB[]>([]);
   const [profileName, setProfileName] = useState("");
   const [profileStatus, setProfileStatus] = useState<string>("pending");
   const [filter, setFilter] = useState<"all" | TrainingType>("all");
@@ -73,6 +75,13 @@ const Dashboard = () => {
     setPlayers((ps ?? []) as Player[]);
     setSlots((sl ?? []) as Slot[]);
     setBookings((bk ?? []) as Booking[]);
+    const playerIds = (ps ?? []).map((p) => p.id);
+    if (playerIds.length) {
+      const { data: fb } = await supabase.from("feedback").select("*").in("player_id", playerIds).eq("visible_to_player", true).order("created_at", { ascending: false });
+      setFeedback((fb ?? []) as FB[]);
+    } else {
+      setFeedback([]);
+    }
   };
 
   const slotCount = (slotId: string) =>
