@@ -3,6 +3,7 @@ import { useNavigate, Link } from "react-router-dom";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
+import { notify, ADMIN_EMAIL } from "@/lib/notify";
 import {
   TrainingType,
   SlotVisibility,
@@ -93,6 +94,20 @@ const Dashboard = () => {
     setBusy(null);
     if (error) return toast.error(error.message);
     toast.success("Geboekt!");
+    void notify("booking-confirmed-private", session!.user.email, {
+      playerName: profileName,
+      date: fmtDate(s.date),
+      slotTime: fmtTime(s.start_time),
+      trainingType: trainingTypeLabel(s.training_type),
+      location: s.location ?? "",
+    }, `book-${s.id}-${session!.user.id}`);
+    void notify("admin-new-booking", ADMIN_EMAIL, {
+      who: profileName || session!.user.email,
+      date: fmtDate(s.date),
+      slotTime: fmtTime(s.start_time),
+      trainingType: trainingTypeLabel(s.training_type),
+      contact: session!.user.email,
+    }, `admin-book-${s.id}-${session!.user.id}`);
     void loadAll();
   };
 
@@ -105,6 +120,14 @@ const Dashboard = () => {
     const { error } = await supabase.from("bookings").update({ status: "cancelled_by_player" }).eq("id", b.id);
     if (error) return toast.error(error.message);
     toast.success("Geannuleerd");
+    if (s) {
+      void notify("admin-new-booking", ADMIN_EMAIL, {
+        who: `${profileName || session!.user.email} (ANNULERING)`,
+        date: fmtDate(s.date),
+        slotTime: fmtTime(s.start_time),
+        contact: session!.user.email,
+      }, `admin-cancel-${b.id}`);
+    }
     void loadAll();
   };
 
