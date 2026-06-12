@@ -606,7 +606,12 @@ export type Database = {
       profile_status: "pending" | "active" | "inactive"
       slot_status: "open" | "reserved" | "booked" | "cancelled" | "expired"
       slot_visibility: "private" | "public" | "hidden"
-      training_type: "1-on-1" | "Duo" | "Group"
+      training_type:
+        | "one_on_one"
+        | "duo"
+        | "small_group"
+        | "bvo_small_group"
+        | "trial"
       waitlist_status:
         | "new"
         | "contacted"
@@ -773,7 +778,13 @@ export const Constants = {
       profile_status: ["pending", "active", "inactive"],
       slot_status: ["open", "reserved", "booked", "cancelled", "expired"],
       slot_visibility: ["private", "public", "hidden"],
-      training_type: ["1-on-1", "Duo", "Group"],
+      training_type: [
+        "one_on_one",
+        "duo",
+        "small_group",
+        "bvo_small_group",
+        "trial",
+      ],
       waitlist_status: [
         "new",
         "contacted",
