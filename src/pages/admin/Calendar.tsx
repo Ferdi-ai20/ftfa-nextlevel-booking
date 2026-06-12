@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
+import { notify, ADMIN_EMAIL } from "@/lib/notify";
 import {
   TRAINING_TYPES,
   TrainingType,
@@ -9,6 +10,7 @@ import {
   BookingStatus,
   trainingTypeLabel,
   fmtTime,
+  fmtDate,
   ACTIVE_BOOKING_STATUSES,
 } from "@/lib/slots";
 
@@ -216,6 +218,16 @@ const Calendar = () => {
     if (!confirm("Boeking annuleren?")) return;
     const { error } = await supabase.from("bookings").update({ status: "cancelled_by_admin" }).eq("id", b.id);
     if (error) return toast.error(error.message);
+    const s = slots.find((x) => x.id === b.slot_id);
+    const email = b.guest_email ?? (await getProfileEmail(b.profile_id));
+    if (email && s) {
+      void notify("booking-cancelled", email, {
+        recipientName: b.guest_name ?? "",
+        date: fmtDate(s.date),
+        slotTime: fmtTime(s.start_time),
+        byAdmin: true,
+      }, `cancel-admin-${b.id}`);
+    }
     void load();
   };
 
@@ -223,7 +235,29 @@ const Calendar = () => {
     const { error } = await supabase.from("bookings").update({ status: "confirmed" }).eq("id", b.id);
     if (error) return toast.error(error.message);
     toast.success("Boeking geaccepteerd");
+    const s = slots.find((x) => x.id === b.slot_id);
+    const email = b.guest_email ?? (await getProfileEmail(b.profile_id));
+    if (email && s) {
+      void notify("booking-accepted-public", email, {
+        guestName: b.guest_name ?? "",
+        date: fmtDate(s.date),
+        slotTime: fmtTime(s.start_time),
+        location: s.location ?? "",
+      }, `accept-${b.id}`);
+    }
     void load();
+  };
+
+  const setPayment = async (b: Booking, payment_status: string, payment_method: string | null) => {
+    const { error } = await supabase.from("bookings").update({ payment_status, payment_method } as any).eq("id", b.id);
+    if (error) return toast.error(error.message);
+    void load();
+  };
+
+  const getProfileEmail = async (_profileId: string | null) => {
+    // Registered users' emails live in auth.users which isn't readable client-side.
+    // For registered bookings the email is sent via realtime triggers in their dashboard flows.
+    return null;
   };
 
   const headerLabel = useMemo(() => {
@@ -302,6 +336,7 @@ const Calendar = () => {
           onVisibility={(v) => setVisibility(editing, v)}
           onCancelBooking={cancelBooking}
           onAcceptBooking={acceptBooking}
+          onSetPayment={setPayment}
           form={form}
           setForm={setForm}
         />
@@ -464,6 +499,7 @@ const SlotDrawer = ({
   onVisibility,
   onCancelBooking,
   onAcceptBooking,
+  onSetPayment,
   form,
   setForm,
   isNew = false,
@@ -476,6 +512,7 @@ const SlotDrawer = ({
   onVisibility?: (v: SlotVisibility) => void;
   onCancelBooking?: (b: Booking) => void;
   onAcceptBooking?: (b: Booking) => void;
+  onSetPayment?: (b: Booking, status: string, method: string | null) => void;
   form: typeof emptyForm;
   setForm: (f: typeof emptyForm) => void;
   isNew?: boolean;
@@ -545,17 +582,34 @@ const SlotDrawer = ({
             <div className="space-y-1.5">
               {bookings.length === 0 && <div className="text-xs text-muted-foreground">Geen boekingen.</div>}
               {bookings.map((b) => (
-                <div key={b.id} className="border border-border p-2 text-xs flex items-center justify-between gap-2">
-                  <div className="truncate">
-                    <div className="font-medium">{b.guest_name ?? (b.profile_id ? b.profile_id.slice(0, 8) : "—")}</div>
-                    <div className="text-muted-foreground">{b.guest_email ?? ""} · {b.status}</div>
+                <div key={b.id} className="border border-border p-2 text-xs space-y-2">
+                  <div className="flex items-center justify-between gap-2">
+                    <div className="truncate">
+                      <div className="font-medium">{b.guest_name ?? (b.profile_id ? b.profile_id.slice(0, 8) : "—")}</div>
+                      <div className="text-muted-foreground">{b.guest_email ?? ""} · {b.status}</div>
+                    </div>
+                    <div className="flex gap-1 shrink-0">
+                      {b.status === "pending_review" && (
+                        <button onClick={() => onAcceptBooking?.(b)} className="text-[9px] uppercase border border-primary text-primary px-2 py-1 hover:bg-primary/10">Accept</button>
+                      )}
+                      <button onClick={() => onCancelBooking?.(b)} className="text-[9px] uppercase border border-destructive/40 text-destructive px-2 py-1 hover:bg-destructive/10">Cancel</button>
+                    </div>
                   </div>
-                  <div className="flex gap-1">
-                    {b.status === "pending_review" && (
-                      <button onClick={() => onAcceptBooking?.(b)} className="text-[9px] uppercase border border-primary text-primary px-2 py-1 hover:bg-primary/10">Accept</button>
-                    )}
-                    <button onClick={() => onCancelBooking?.(b)} className="text-[9px] uppercase border border-destructive/40 text-destructive px-2 py-1 hover:bg-destructive/10">Cancel</button>
-                  </div>
+                  {onSetPayment && (
+                    <div className="flex flex-wrap gap-1 items-center pt-1 border-t border-border/60">
+                      <span className="text-[9px] uppercase tracking-widest text-muted-foreground">Betaling:</span>
+                      {(["not_required","unpaid","paid","refunded"] as const).map((ps) => (
+                        <button key={ps} onClick={() => onSetPayment(b, ps, b.payment_method)} className={`text-[9px] uppercase px-2 py-1 border ${b.payment_status === ps ? "border-primary text-primary bg-primary/10" : "border-border text-muted-foreground"}`}>{ps}</button>
+                      ))}
+                      <select value={b.payment_method ?? ""} onChange={(e) => onSetPayment(b, b.payment_status, e.target.value || null)} className="text-[10px] bg-background border border-border px-1.5 py-1 ml-auto">
+                        <option value="">methode</option>
+                        <option value="cash">cash</option>
+                        <option value="bank_transfer">overschrijving</option>
+                        <option value="tikkie">tikkie</option>
+                        <option value="online">online</option>
+                      </select>
+                    </div>
+                  )}
                 </div>
               ))}
             </div>

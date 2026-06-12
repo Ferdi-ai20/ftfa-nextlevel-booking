@@ -7,6 +7,7 @@ const links = [
   { to: "/admin", end: true, label: "Calendar" },
   { to: "/admin/applications", label: "Applications" },
   { to: "/admin/players", label: "Players" },
+  { to: "/admin/feedback", label: "Feedback" },
   { to: "/admin/settings", label: "Settings" },
 ];
 

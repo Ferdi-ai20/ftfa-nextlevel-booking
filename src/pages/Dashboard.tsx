@@ -3,6 +3,7 @@ import { useNavigate, Link } from "react-router-dom";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
+import { notify, ADMIN_EMAIL } from "@/lib/notify";
 import {
   TrainingType,
   SlotVisibility,
@@ -37,6 +38,7 @@ type Booking = {
 };
 
 type Player = { id: string; player_name: string };
+type FB = { id: string; player_id: string; strengths: string | null; development_points: string | null; feedback_text: string | null; created_at: string };
 
 const Dashboard = () => {
   const { session, isAdmin, loading, signOut } = useAuth();
@@ -44,6 +46,7 @@ const Dashboard = () => {
   const [slots, setSlots] = useState<Slot[]>([]);
   const [bookings, setBookings] = useState<Booking[]>([]);
   const [players, setPlayers] = useState<Player[]>([]);
+  const [feedback, setFeedback] = useState<FB[]>([]);
   const [profileName, setProfileName] = useState("");
   const [profileStatus, setProfileStatus] = useState<string>("pending");
   const [filter, setFilter] = useState<"all" | TrainingType>("all");
@@ -72,6 +75,13 @@ const Dashboard = () => {
     setPlayers((ps ?? []) as Player[]);
     setSlots((sl ?? []) as Slot[]);
     setBookings((bk ?? []) as Booking[]);
+    const playerIds = (ps ?? []).map((p) => p.id);
+    if (playerIds.length) {
+      const { data: fb } = await supabase.from("feedback").select("*").in("player_id", playerIds).eq("visible_to_player", true).order("created_at", { ascending: false });
+      setFeedback((fb ?? []) as FB[]);
+    } else {
+      setFeedback([]);
+    }
   };
 
   const slotCount = (slotId: string) =>
@@ -93,6 +103,20 @@ const Dashboard = () => {
     setBusy(null);
     if (error) return toast.error(error.message);
     toast.success("Geboekt!");
+    void notify("booking-confirmed-private", session!.user.email, {
+      playerName: profileName,
+      date: fmtDate(s.date),
+      slotTime: fmtTime(s.start_time),
+      trainingType: trainingTypeLabel(s.training_type),
+      location: s.location ?? "",
+    }, `book-${s.id}-${session!.user.id}`);
+    void notify("admin-new-booking", ADMIN_EMAIL, {
+      who: profileName || session!.user.email,
+      date: fmtDate(s.date),
+      slotTime: fmtTime(s.start_time),
+      trainingType: trainingTypeLabel(s.training_type),
+      contact: session!.user.email,
+    }, `admin-book-${s.id}-${session!.user.id}`);
     void loadAll();
   };
 
@@ -105,6 +129,14 @@ const Dashboard = () => {
     const { error } = await supabase.from("bookings").update({ status: "cancelled_by_player" }).eq("id", b.id);
     if (error) return toast.error(error.message);
     toast.success("Geannuleerd");
+    if (s) {
+      void notify("admin-new-booking", ADMIN_EMAIL, {
+        who: `${profileName || session!.user.email} (ANNULERING)`,
+        date: fmtDate(s.date),
+        slotTime: fmtTime(s.start_time),
+        contact: session!.user.email,
+      }, `admin-cancel-${b.id}`);
+    }
     void loadAll();
   };
 
@@ -219,6 +251,27 @@ const Dashboard = () => {
             </div>
           )}
         </section>
+
+        {feedback.length > 0 && (
+          <section>
+            <div className="text-[11px] uppercase tracking-[0.3em] text-primary">/ Feedback</div>
+            <h2 className="display-font text-3xl uppercase mt-2 mb-6">Van de coach</h2>
+            <div className="space-y-2">
+              {feedback.map((f) => {
+                const p = players.find((x) => x.id === f.player_id);
+                return (
+                  <div key={f.id} className="border border-border bg-card p-4">
+                    <div className="display-font text-lg uppercase">{p?.player_name ?? "—"}</div>
+                    <div className="text-[10px] uppercase tracking-widest text-muted-foreground">{new Date(f.created_at).toLocaleDateString("nl-NL")}</div>
+                    {f.strengths && <div className="text-sm mt-2"><strong>Sterk:</strong> {f.strengths}</div>}
+                    {f.development_points && <div className="text-sm mt-1"><strong>Ontwikkelen:</strong> {f.development_points}</div>}
+                    {f.feedback_text && <div className="text-sm mt-1 text-muted-foreground italic">"{f.feedback_text}"</div>}
+                  </div>
+                );
+              })}
+            </div>
+          </section>
+        )}
       </div>
     </main>
   );

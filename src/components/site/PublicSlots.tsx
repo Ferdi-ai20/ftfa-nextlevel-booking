@@ -8,6 +8,7 @@ import {
   fmtDate,
   fmtTime,
 } from "@/lib/slots";
+import { notify, ADMIN_EMAIL } from "@/lib/notify";
 
 type Slot = {
   id: string;
@@ -139,6 +140,18 @@ const GuestBookingModal = ({ slot, onClose }: { slot: Slot; onClose: () => void 
     setBusy(false);
     if (error) return toast.error(error.message);
     toast.success("Aanvraag verzonden! Ferdi neemt contact op.");
+    void notify("booking-pending-review", d.guest_email, {
+      guestName: d.guest_name,
+      date: fmtDate(slot.date),
+      slotTime: fmtTime(slot.start_time),
+    });
+    void notify("admin-new-booking", ADMIN_EMAIL, {
+      who: `${d.guest_name} (ouder van ${d.player_name})`,
+      date: fmtDate(slot.date),
+      slotTime: fmtTime(slot.start_time),
+      needsReview: true,
+      contact: `${d.guest_email} · ${d.guest_phone}`,
+    });
     onClose();
   };
 
