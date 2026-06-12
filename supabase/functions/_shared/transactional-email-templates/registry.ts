@@ -9,12 +9,20 @@ export interface TemplateEntry {
   previewData?: Record<string, any>
 }
 
-import { template as sundayReminder } from './sunday-reminder.tsx'
-import { template as bookingWindowOpen } from './booking-window-open.tsx'
 import { template as bookingConfirmation } from './booking-confirmation.tsx'
+import { template as bookingConfirmedPrivate } from './booking-confirmed-private.tsx'
+import { template as bookingPendingReview } from './booking-pending-review.tsx'
+import { template as bookingAcceptedPublic } from './booking-accepted-public.tsx'
+import { template as bookingCancelled } from './booking-cancelled.tsx'
+import { template as adminNewBooking } from './admin-new-booking.tsx'
+import { template as applicationDecision } from './application-decision.tsx'
 
 export const TEMPLATES: Record<string, TemplateEntry> = {
-  'sunday-reminder': sundayReminder,
-  'booking-window-open': bookingWindowOpen,
   'booking-confirmation': bookingConfirmation,
+  'booking-confirmed-private': bookingConfirmedPrivate,
+  'booking-pending-review': bookingPendingReview,
+  'booking-accepted-public': bookingAcceptedPublic,
+  'booking-cancelled': bookingCancelled,
+  'admin-new-booking': adminNewBooking,
+  'application-decision': applicationDecision,
 }
