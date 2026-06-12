@@ -500,6 +500,7 @@ const SlotDrawer = ({
   onVisibility,
   onCancelBooking,
   onAcceptBooking,
+  onSetPayment,
   form,
   setForm,
   isNew = false,
@@ -512,6 +513,7 @@ const SlotDrawer = ({
   onVisibility?: (v: SlotVisibility) => void;
   onCancelBooking?: (b: Booking) => void;
   onAcceptBooking?: (b: Booking) => void;
+  onSetPayment?: (b: Booking, status: string, method: string | null) => void;
   form: typeof emptyForm;
   setForm: (f: typeof emptyForm) => void;
   isNew?: boolean;
@@ -581,17 +583,34 @@ const SlotDrawer = ({
             <div className="space-y-1.5">
               {bookings.length === 0 && <div className="text-xs text-muted-foreground">Geen boekingen.</div>}
               {bookings.map((b) => (
-                <div key={b.id} className="border border-border p-2 text-xs flex items-center justify-between gap-2">
-                  <div className="truncate">
-                    <div className="font-medium">{b.guest_name ?? (b.profile_id ? b.profile_id.slice(0, 8) : "—")}</div>
-                    <div className="text-muted-foreground">{b.guest_email ?? ""} · {b.status}</div>
+                <div key={b.id} className="border border-border p-2 text-xs space-y-2">
+                  <div className="flex items-center justify-between gap-2">
+                    <div className="truncate">
+                      <div className="font-medium">{b.guest_name ?? (b.profile_id ? b.profile_id.slice(0, 8) : "—")}</div>
+                      <div className="text-muted-foreground">{b.guest_email ?? ""} · {b.status}</div>
+                    </div>
+                    <div className="flex gap-1 shrink-0">
+                      {b.status === "pending_review" && (
+                        <button onClick={() => onAcceptBooking?.(b)} className="text-[9px] uppercase border border-primary text-primary px-2 py-1 hover:bg-primary/10">Accept</button>
+                      )}
+                      <button onClick={() => onCancelBooking?.(b)} className="text-[9px] uppercase border border-destructive/40 text-destructive px-2 py-1 hover:bg-destructive/10">Cancel</button>
+                    </div>
                   </div>
-                  <div className="flex gap-1">
-                    {b.status === "pending_review" && (
-                      <button onClick={() => onAcceptBooking?.(b)} className="text-[9px] uppercase border border-primary text-primary px-2 py-1 hover:bg-primary/10">Accept</button>
-                    )}
-                    <button onClick={() => onCancelBooking?.(b)} className="text-[9px] uppercase border border-destructive/40 text-destructive px-2 py-1 hover:bg-destructive/10">Cancel</button>
-                  </div>
+                  {onSetPayment && (
+                    <div className="flex flex-wrap gap-1 items-center pt-1 border-t border-border/60">
+                      <span className="text-[9px] uppercase tracking-widest text-muted-foreground">Betaling:</span>
+                      {(["not_required","unpaid","paid","refunded"] as const).map((ps) => (
+                        <button key={ps} onClick={() => onSetPayment(b, ps, b.payment_method)} className={`text-[9px] uppercase px-2 py-1 border ${b.payment_status === ps ? "border-primary text-primary bg-primary/10" : "border-border text-muted-foreground"}`}>{ps}</button>
+                      ))}
+                      <select value={b.payment_method ?? ""} onChange={(e) => onSetPayment(b, b.payment_status, e.target.value || null)} className="text-[10px] bg-background border border-border px-1.5 py-1 ml-auto">
+                        <option value="">methode</option>
+                        <option value="cash">cash</option>
+                        <option value="bank_transfer">overschrijving</option>
+                        <option value="tikkie">tikkie</option>
+                        <option value="online">online</option>
+                      </select>
+                    </div>
+                  )}
                 </div>
               ))}
             </div>
