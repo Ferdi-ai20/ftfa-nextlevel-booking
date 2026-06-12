@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
+import { notify, ADMIN_EMAIL } from "@/lib/notify";
 import {
   TRAINING_TYPES,
   TrainingType,
@@ -9,6 +10,7 @@ import {
   BookingStatus,
   trainingTypeLabel,
   fmtTime,
+  fmtDate,
   ACTIVE_BOOKING_STATUSES,
 } from "@/lib/slots";
 
@@ -216,6 +218,16 @@ const Calendar = () => {
     if (!confirm("Boeking annuleren?")) return;
     const { error } = await supabase.from("bookings").update({ status: "cancelled_by_admin" }).eq("id", b.id);
     if (error) return toast.error(error.message);
+    const s = slots.find((x) => x.id === b.slot_id);
+    const email = b.guest_email ?? (await getProfileEmail(b.profile_id));
+    if (email && s) {
+      void notify("booking-cancelled", email, {
+        recipientName: b.guest_name ?? "",
+        date: fmtDate(s.date),
+        slotTime: fmtTime(s.start_time),
+        byAdmin: true,
+      }, `cancel-admin-${b.id}`);
+    }
     void load();
   };
 
@@ -223,7 +235,30 @@ const Calendar = () => {
     const { error } = await supabase.from("bookings").update({ status: "confirmed" }).eq("id", b.id);
     if (error) return toast.error(error.message);
     toast.success("Boeking geaccepteerd");
+    const s = slots.find((x) => x.id === b.slot_id);
+    const email = b.guest_email ?? (await getProfileEmail(b.profile_id));
+    if (email && s) {
+      void notify("booking-accepted-public", email, {
+        guestName: b.guest_name ?? "",
+        date: fmtDate(s.date),
+        slotTime: fmtTime(s.start_time),
+        location: s.location ?? "",
+      }, `accept-${b.id}`);
+    }
     void load();
+  };
+
+  const setPayment = async (b: Booking, payment_status: string, payment_method: string | null) => {
+    const { error } = await supabase.from("bookings").update({ payment_status, payment_method } as any).eq("id", b.id);
+    if (error) return toast.error(error.message);
+    void load();
+  };
+
+  const getProfileEmail = async (profileId: string | null) => {
+    if (!profileId) return null;
+    const { data } = await supabase.auth.admin?.getUserById?.(profileId).catch(() => ({ data: null })) ?? { data: null };
+    // auth.admin not available client-side — fallback: no email lookup
+    return (data as any)?.user?.email ?? null;
   };
 
   const headerLabel = useMemo(() => {
