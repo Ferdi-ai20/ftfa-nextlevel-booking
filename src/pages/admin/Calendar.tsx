@@ -254,11 +254,10 @@ const Calendar = () => {
     void load();
   };
 
-  const getProfileEmail = async (profileId: string | null) => {
-    if (!profileId) return null;
-    const { data } = await supabase.auth.admin?.getUserById?.(profileId).catch(() => ({ data: null })) ?? { data: null };
-    // auth.admin not available client-side — fallback: no email lookup
-    return (data as any)?.user?.email ?? null;
+  const getProfileEmail = async (_profileId: string | null) => {
+    // Registered users' emails live in auth.users which isn't readable client-side.
+    // For registered bookings the email is sent via realtime triggers in their dashboard flows.
+    return null;
   };
 
   const headerLabel = useMemo(() => {
