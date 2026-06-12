@@ -8,6 +8,7 @@ import {
   fmtDate,
   fmtTime,
 } from "@/lib/slots";
+import { notify, ADMIN_EMAIL } from "@/lib/notify";
 
 type Slot = {
   id: string;
