@@ -1,24 +1,18 @@
 import { motion } from "framer-motion";
-import heroVideo from "@/assets/hero-training.mp4.asset.json";
-import heroPoster from "@/assets/hero-training.jpg";
+import heroImage from "@/assets/hero-training.jpg.asset.json";
 
 const Hero = () => {
   return (
     <>
-      {/* Full-bleed video — no text overlay */}
+      {/* Full-bleed image — no text overlay */}
       <section
         id="top"
         className="relative h-screen min-h-[640px] w-full overflow-hidden bg-black"
       >
         <div className="absolute inset-0">
-          <video
-            src={heroVideo.url}
-            poster={heroPoster}
-            autoPlay
-            muted
-            loop
-            playsInline
-            preload="auto"
+          <img
+            src={heroImage.url}
+            alt="Training"
             className="w-full h-full object-cover grayscale contrast-125 brightness-90"
           />
           {/* subtle bottom vignette only */}
