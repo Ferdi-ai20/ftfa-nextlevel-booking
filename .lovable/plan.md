@@ -1,53 +1,59 @@
-## Plan: Domein vrijmaken + opnieuw setup + end-to-end test
+## Doel
+De FTFA homepage omtoveren in de stijl van Coached by Matteo: pure zwart/wit, full-bleed cinematische video-hero, monogram + `[MENU]` chrome, editorial typografie. Strakke premium uitstraling, rustig en zelfverzekerd.
 
-### Stap 1 — Buiten Lovable: domein vrijmaken bij Mailgun (jij doet dit)
+## Design tokens (pure monochroom)
+- Achtergrond: `#0a0a0a` (off-black)
+- Surface: `#141414`
+- Tekst primair: `#ffffff`, secundair: `rgba(255,255,255,0.6)`, mute: `rgba(255,255,255,0.4)`
+- Border: `rgba(255,255,255,0.12)`
+- Geen accentkleur — wit is het accent
+- Type: display in Inter Black (zwaar, tight tracking) of Big Shoulders Display; UI/labels in JetBrains Mono uppercase met wide tracking
+- Spacing: ruim, editorial; veel negative space
+- Radius: 0 (vierkant, brutalist-editorial)
 
-Aangezien je weet welk Mailgun-account het is:
+## Hero video
+- AI-gegenereerd via videogen: cinematische monochrome trainingsshot (~5s, 16:9, 1080p), camera_fixed=true voor stabiel loopen
+- Asset: `src/assets/hero-training.mp4`
+- HTML5 `<video autoplay muted loop playsinline>` met grayscale + lichte contrast/brightness filter
+- Bottom vignette voor leesbaarheid
+- Fallback: poster image van eerste frame
 
-1. Log in op dat Mailgun-account (https://app.mailgun.com).
-2. Ga naar **Sending → Domains**.
-3. Zoek `notify.ftfaacademy.nl` in de lijst.
-4. Klik erop → **Delete domain** (rechtsboven, of via instellingen).
-5. Bevestig.
+## Hero layout (v1 Cinematic monochrome)
+- 100vh full-bleed video
+- Top-left: `FT` monogram (Inter Black, klein, met "FERDI TARHAN ACADEMY" microtype eronder)
+- Top-right: `[MENU]` in mono — opent overlay menu met grote linkjes
+- Center: headline "ELITE TRAINING. REAL DEVELOPMENT." in massive display type
+- Subkop + 2 knoppen (Apply Now wit/zwart, Book Training outline)
+- Bottom-center: dunne lijn + scroll arrow (bounce)
+- Bottom rand: mono microtype links (200+ PLAYERS · 12 TO BVO · 10-23 · 1:1) en rechts (EST. NETHERLANDS)
 
-Optioneel maar aanbevolen: ook bij Mijndomein de oude DNS-records die naar Mailgun wezen (SPF, DKIM, MX, CNAME's voor `email.notify.*`) opruimen. De nieuwe NS-records die we straks krijgen vervangen die toch.
+## Menu overlay
+- Full-screen zwart overlay bij klik op `[MENU]`
+- Grote linkjes: HOME / THE COACH / PROGRAMS / RESULTS / CONTACT
+- Sluit met `[CLOSE]`
+- Mono label per link (01, 02, …)
 
-Laat het mij weten zodra dit gelukt is. Pas dan kan stap 2.
+## Rest van de site (editorial restyle, zelfde tokens)
+- **About / The Coach**: split layout, grote foto links, narratieve tekst rechts, mono kicker
+- **Programs**: 3-koloms grid van kaarten — zwart, witte border, hover invert
+- **Proof / Results**: full-bleed beeldsectie met testimonial quote in display type
+- **CTA**: massive type "READY?" + Apply knop
+- **Footer**: minimal, mono, kolommen met links + socials
 
-### Stap 2 — In Lovable: domein opnieuw provisionen
+Behoud bestaande functionaliteit (Calendly, WaitlistForm, PublicSlots, Instagram/TikTok embeds) — alleen styling/structuur restyling, geen logica wijzigen.
 
-Ik haal de huidige (failed) domein-koppeling weg en start opnieuw, zodat Lovable een verse setup-poging doet. Je krijgt opnieuw 2 NS-records (`ns3.lovable.cloud`, `ns4.lovable.cloud`) die je bij Mijndomein voor de subdomein `notify` moet zetten.
+## Technische aanpak
+1. Genereer hero video via `videogen--generate_video` (monochrome training, 5s, 16:9, camera_fixed)
+2. Update `src/index.css` met monochrome tokens + Inter/Big Shoulders/JetBrains Mono via Google Fonts
+3. Update `tailwind.config.ts` met de fontFamilies
+4. Herschrijf `src/components/site/Hero.tsx` naar full-bleed video layout
+5. Herschrijf `src/components/site/Nav.tsx` naar minimal monogram + `[MENU]` overlay
+6. Restyle `About.tsx`, `Programs.tsx`, `Proof.tsx`, `CTA.tsx`, `Footer.tsx` met dezelfde tokens
+7. Behoud StickyCTA functioneel maar restyle subtieler
 
-### Stap 3 — Bij Mijndomein: NS-records plaatsen
-
-Dezelfde records als vorige keer, voor `notify.ftfaacademy.nl`. DNS-propagatie kan tot 72u duren, meestal binnen een paar uur.
-
-### Stap 4 — Verificatie
-
-Ik check de status periodiek (op jouw signaal, niet automatisch). Zodra status `active` is, kunnen mails écht verstuurd worden.
-
-### Stap 5 — End-to-end test (zodra domein actief is)
-
-Doorloop met echte data:
-
-```text
-1. Publieke site → aanmeldformulier invullen     → check applications-rij
-2. Admin /admin/applications → approve           → check profiles + players + user_roles + mail "application-decision" in inbox
-3. Nieuwe speler-account inloggen                → check email-confirmation mail
-4. Admin /admin → slot aanmaken (private)        → check training_slots-rij
-5. Speler /dashboard → private slot boeken       → check booking + "booking-confirmed-private" mail
-6. Incognito → publieke site → public slot boeken → check guest-booking + "booking-pending-review" mail naar ouder + "admin-new-booking" naar Ferdi
-7. Admin → boeking op paid zetten                → check payment_status update
-8. Admin → boeking annuleren                     → check "booking-cancelled" mail
-```
-
-Per stap controleer ik `email_send_log` (template, status, recipient) en jij bevestigt of de mail aankomt.
-
-### Wat ik nu nodig heb van jou
-
-Eerst stap 1 zelf doen. Geef een seintje "domein verwijderd uit Mailgun" en dan ga ik door met stap 2.
-
-### Risico's
-
-- Als bij Mijndomein nog oude DNS-records van het oude Mailgun-account staan, kan dat de verificatie van Lovable's nieuwe setup vertragen. Beste om die oude records mee te verwijderen.
-- Als jij geen delete-rechten hebt op het Mailgun-account, kom je vast. Geef dan een seintje, dan switchen we alsnog naar een andere subdomein (bv. `mail.ftfaacademy.nl`).
+## Scope guardrails
+- Geen kleur-accenten toevoegen (puur monochroom)
+- Geen functionaliteit/backend wijzigen
+- Bestaande secties/embeds blijven werken
+- Admin/Dashboard schermen blijven ongemoeid (separate styling concern)
+- Mobile responsive — alles schaalt netjes naar mobiel
