@@ -3,6 +3,7 @@ import Hero from "@/components/site/Hero";
 import Marquee from "@/components/site/Marquee";
 import About from "@/components/site/About";
 import Programs from "@/components/site/Programs";
+import PublicSlots from "@/components/site/PublicSlots";
 import WaitlistForm from "@/components/site/WaitlistForm";
 import Proof from "@/components/site/Proof";
 import Coach from "@/components/site/Coach";
@@ -20,6 +21,7 @@ const Index = () => {
       <About />
       <Programs />
       <Coach />
+      <PublicSlots />
       <WaitlistForm />
       <Proof />
       <Social />
