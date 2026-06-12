@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
+import { notify } from "@/lib/notify";
 
 type Application = {
   id: string;
@@ -51,12 +52,22 @@ const Applications = () => {
       });
     }
     toast.success(prof ? "Goedgekeurd + speler aangemaakt" : "Goedgekeurd. Ouder moet nog account aanmaken met dit telefoonnummer.");
+    void notify("application-decision", a.email, {
+      parentName: a.parent_name,
+      playerName: a.player_name,
+      approved: true,
+    }, `app-approve-${a.id}`);
     void load();
   };
 
   const reject = async (a: Application) => {
     if (!confirm("Aanmelding afwijzen?")) return;
     await supabase.from("applications").update({ status: "rejected" }).eq("id", a.id);
+    void notify("application-decision", a.email, {
+      parentName: a.parent_name,
+      playerName: a.player_name,
+      approved: false,
+    }, `app-reject-${a.id}`);
     void load();
   };
 
