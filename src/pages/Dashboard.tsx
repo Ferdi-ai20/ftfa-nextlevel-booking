@@ -251,6 +251,27 @@ const Dashboard = () => {
             </div>
           )}
         </section>
+
+        {feedback.length > 0 && (
+          <section>
+            <div className="text-[11px] uppercase tracking-[0.3em] text-primary">/ Feedback</div>
+            <h2 className="display-font text-3xl uppercase mt-2 mb-6">Van de coach</h2>
+            <div className="space-y-2">
+              {feedback.map((f) => {
+                const p = players.find((x) => x.id === f.player_id);
+                return (
+                  <div key={f.id} className="border border-border bg-card p-4">
+                    <div className="display-font text-lg uppercase">{p?.player_name ?? "—"}</div>
+                    <div className="text-[10px] uppercase tracking-widest text-muted-foreground">{new Date(f.created_at).toLocaleDateString("nl-NL")}</div>
+                    {f.strengths && <div className="text-sm mt-2"><strong>Sterk:</strong> {f.strengths}</div>}
+                    {f.development_points && <div className="text-sm mt-1"><strong>Ontwikkelen:</strong> {f.development_points}</div>}
+                    {f.feedback_text && <div className="text-sm mt-1 text-muted-foreground italic">"{f.feedback_text}"</div>}
+                  </div>
+                );
+              })}
+            </div>
+          </section>
+        )}
       </div>
     </main>
   );
