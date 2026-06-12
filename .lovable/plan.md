@@ -1,50 +1,141 @@
+## Plan: Volledige herbouw boekingssysteem FTFA
 
-
-## Plan: Woensdag-deadline terug + email-reminder (geen WhatsApp)
-
-Twee delen, allebei klein.
+Grote refactor. Ik splits dit in 4 fasen die ik achter elkaar uitvoer in dit gesprek. Na elke fase een korte check.
 
 ---
 
-### 1. Woensdag 20:00 deadline terug aanzetten
+### Fase 0 — Destructieve cleanup + nieuw schema
 
-In `src/pages/Dashboard.tsx` is de `locked`/deadline-check uitgezet (knoppen werken nu na deadline). Terugdraaien:
+**Drop oude tabellen** (data weg, jij hebt dit bevestigd):
+- `bookings`, `booking_windows`, `booking_window_slots`
+- `weekly_confirmations`, `weekly_attendance`, `fixed_sunday_slots`, `fixed_players`
+- `waitlist`, `waitlist_entries`, `waitlist_entry_tags`, `external_bookings`
+- `players` (huidige vorm) — wordt vervangen
 
-- `respond()` blokkeert opnieuw zodra `isPastDeadline(sunday)` true is, met toast: *"Deadline passed (Wednesday 20:00). Contact your coach to change your response."*
-- Knoppen *Attending / Not attending / Different time* worden weer `disabled` na woensdag 20:00.
-- Banner bovenaan toont weer rood: *"Deadline passed — contact your coach"* in plaats van *"late responses still accepted"*.
-- Het *"My preferred training time"*-blok blijft wél altijd bewerkbaar (heeft niets met de weekdeadline te maken).
+**Nieuwe tabellen** (in 1 migratie, met GRANTs + RLS + policies):
 
-De deadline-logica in `src/lib/dates.ts` (`deadlineFor` = woensdag 20:00 vóór de zondag) blijft zoals hij is.
+`profiles` (bestaand uitbreiden):
+- voeg `role` (enum: `guest` default, `active_player`, `admin`) — voor admin gebruiken we `user_roles` (bestaat al), `role` op profile geeft alleen `guest` vs `active_player` status.
+- voeg `status` (`pending`, `active`, `inactive`)
 
-### 2. Email-reminder bevestigen + handmatige trigger
+`players` (nieuw):
+- `parent_profile_id`, `player_name`, `birth_year`, `club`, `team`, `position`, `status`, `notes`
 
-De email-reminder via `send-sunday-reminders` bestaat al en draait via cron (ma 17:00 + wo 14:00). De `sunday-reminder` template is gekoppeld. Wat er ontbreekt:
+`training_slots`:
+- `date`, `start_time`, `end_time`, `training_type` (enum: `one_on_one`, `duo`, `small_group`, `bvo_small_group`, `trial`), `visibility` (enum: `private`, `public`, `hidden`), `status` (enum: `open`, `reserved`, `booked`, `cancelled`, `expired`), `max_players`, `price_per_player`, `location`, `admin_note`, `player_note`, `auto_public_enabled`, `auto_public_hours_before`, `auto_public_min_bookings_threshold`, `created_by`
 
-- **Spelers zonder fixed slot worden overgeslagen.** De edge function leest alleen uit `fixed_sunday_slots`. Uitbreiden: ook spelers zonder fixed slot meenemen als ze een `preferred_time_from` hebben gezet (en nog niet hebben gereageerd voor de komende zondag). Voor die spelers wordt `slotTime` weggelaten of vervangen door hun voorkeurstijd.
-- **Handmatige knop "Send reminders now"** in `src/pages/admin/SundayPlanning.tsx`: roept `send-sunday-reminders` direct aan met checkbox *"Final reminder"* (zet `isFinal: true`). Toont resultaat als toast: `sent: X, skipped: Y`.
-- **Reminder-status per speler** in `SundayPlanning.tsx`: kleine grijze tag *"Reminder sent ma 17:00"* / *"wo 14:00"* op basis van `email_send_log` waar `template_name='sunday-reminder'` en de `idempotencyKey` de `session_date` + `userId` bevat. Zo zie je per ouder of de mail eruit is.
-- **Betere logging** in `send-sunday-reminders/index.ts`: per parent een console-regel met `email + status (sent/skipped + reason)` zodat we in de Edge Function logs kunnen zien wie wel/niet bereikt is.
+`bookings`:
+- `slot_id`, `player_id` (nullable voor guests), `profile_id` (nullable voor guests), `guest_name`, `guest_email`, `guest_phone`, `guest_birth_year`, `guest_club`, `guest_team`, `guest_position`, `guest_goal`, `guest_notes`, `status` (enum), `payment_status` (enum), `payment_method` (enum)
 
-Geen Twilio, geen WhatsApp, geen extra connector nodig — puur Lovable Emails (al ingericht).
+`applications`:
+- `parent_name`, `player_name`, `birth_year`, `email`, `phone`, `club`, `team`, `position`, `goal`, `status` (`pending`/`approved`/`rejected`), bij approve → profile + player + role update.
 
-### 3. Wat blijft hetzelfde
+`feedback`:
+- `player_id`, `slot_id`, `feedback_text`, `development_points`, `strengths`, `visible_to_player`
 
-- Realtime subscription op `weekly_confirmations` in admin (al gedaan vorige loop).
-- Mobiele tab-bar in admin (al gedaan).
-- Voorkeurtijd-blok op het dashboard (al gedaan).
-- `sunday-reminder` email template (geen wijzigingen nodig).
+**RLS samenvatting:**
+- Guests: SELECT op `training_slots` waar `visibility='public' AND status='open'`; INSERT op `bookings` alleen voor public slots; INSERT op `applications`.
+- Active players: SELECT private + public slots; INSERT/SELECT/UPDATE eigen bookings; SELECT eigen players + feedback (waar `visible_to_player=true`).
+- Admin (via `has_role`): alles.
+
+**Server-side checks via DB-trigger op `bookings`:**
+- Capaciteit niet overschrijden (count vs max_players)
+- Slot status = `open`
+- Active player check voor private slots
+- Dubbele boeking zelfde slot voorkomen
+- Overlappende tijden voor zelfde speler voorkomen
+- Slot niet verlopen (`date + start_time > now()`)
 
 ---
 
-### Technische details
+### Fase 1 — Admin: slot beheer + kalender
 
-**Files:**
-- `src/pages/Dashboard.tsx` — deadline-check terug in `respond()`, banner-tekst, knoppen `disabled` na deadline.
-- `src/pages/admin/SundayPlanning.tsx` — knop *"Send reminders now"* + checkbox *"Final reminder"*, reminder-status tag per speler op basis van `email_send_log`.
-- `supabase/functions/send-sunday-reminders/index.ts` — ook spelers zonder fixed slot meenemen indien `preferred_time_from` gezet, betere per-recipient logging.
+- Nieuwe pagina `src/pages/admin/Calendar.tsx` met dag/week/maand view (gebruik `react-day-picker` voor maand, custom week/dag grid).
+- Kleurcodering per status/visibility.
+- Klik op leeg moment → modal "Slot aanmaken" met alle velden uit spec.
+- Klik op bestaand slot → detailpaneel: aanpassen, visibility toggle (private/public/hidden), verwijderen, boekingen bekijken, speler handmatig toevoegen/verwijderen.
+- Vervang huidige `SundayPlanning` route door deze kalender als admin index.
+- Nieuwe pagina `src/pages/admin/Applications.tsx` (vervangt `Approvals`): aanmeldingen lijst, approve → maakt profile active + player record, reject.
+- `Players.tsx` herschrijven voor nieuwe `players` tabel: lijst, edit, status toggle, handmatig toevoegen (zonder application).
+- `BookingWindows.tsx`, `FixedPlayers.tsx`, `Waitlist.tsx` verwijderen uit routes en bestanden.
 
-**Edge function deploy:** `send-sunday-reminders` wordt opnieuw uitgerold na de wijziging.
+---
 
-**Geen DB-migraties, geen nieuwe templates, geen secrets nodig.**
+### Fase 2 — Speler dashboard + public site flow
 
+**Dashboard (`/dashboard`) — volledige herbouw:**
+- Sectie "Beschikbare trainingen": private (en optioneel public) slots in lijst, filterbaar op type. Toont "X van Y plekken beschikbaar". Knop "Boek".
+- Sectie "Mijn boekingen": aankomend + verleden. Annuleren alleen >24u voor start, anders bericht.
+
+**Public site:**
+- Nieuwe sectie op `/` (en/of aparte `/proeftrainingen` route): toont public slots. Lege-state: "Er zijn momenteel geen open proeftrainingen…".
+- Bookingformulier in modal met alle guest-velden uit spec. Submit → booking met status `pending_review`.
+- Bestaande `ParentBooking.tsx` en oude WaitlistForm/WaitlistPage worden vervangen of opgeruimd.
+
+---
+
+### Fase 3 — Auto-public + notificaties + payments UI
+
+**Auto-public:**
+- Cron via pg_cron + edge function `auto-publish-slots` die elk uur draait: voor elk slot met `auto_public_enabled=true`, `visibility='private'`, `now() >= start - auto_public_hours_before`, en huidig aantal bookings < drempel → set `visibility='public'`.
+
+**Notificaties:**
+- Edge function `send-booking-email` (algemeen, met `event` type).
+- Templates in `supabase/functions/_shared/transactional-email-templates/`:
+  - `booking-confirmed-private.tsx` (naar ouder + admin variant)
+  - `booking-pending-review.tsx` (naar ouder)
+  - `booking-pending-admin.tsx` (naar Ferdi)
+  - `booking-accepted-public.tsx`
+  - `booking-cancelled-by-admin.tsx`
+  - `booking-cancelled-by-player-admin.tsx`
+- Bestaande `booking-confirmation.tsx` blijft of wordt aangepast.
+- Triggers via edge function aangeroepen vanuit frontend na succesvolle insert/update (zelfde patroon als nu in `ParentBooking`).
+
+**Payments (alleen UI/velden, geen integratie):**
+- `payment_status` enum: `not_required`, `unpaid`, `paid`, `refunded`.
+- `payment_method` enum: `cash`, `bank_transfer`, `tikkie`, `online`.
+- Admin kan handmatig op `paid` zetten in booking-detail.
+
+---
+
+### Wat blijft staan
+- `auth`, `useAuth`, admin role via `user_roles`.
+- Email-infra (`email_send_log`, `email_send_state`, `process-email-queue`, `send-transactional-email`).
+- Site marketing-componenten (Hero, Coach, Programs, Proof, Footer, Nav).
+- `send-sunday-reminders` → verwijderen (oude flow weg) of behouden? **Voorstel: verwijderen** want bouwt op `weekly_confirmations` die we droppen.
+
+---
+
+### Technisch overzicht bestanden
+
+**Nieuw:**
+- `supabase/migrations/<ts>_full_booking_rebuild.sql`
+- `src/pages/admin/Calendar.tsx`
+- `src/pages/admin/Applications.tsx`
+- `src/pages/admin/BookingDetail.tsx` (modal/drawer)
+- `src/components/site/PublicSlots.tsx`
+- `src/components/site/GuestBookingForm.tsx`
+- `supabase/functions/auto-publish-slots/index.ts`
+- `supabase/functions/send-booking-email/index.ts`
+- 5-6 nieuwe email-templates
+
+**Aangepast:**
+- `src/App.tsx` (routes opschonen)
+- `src/pages/Dashboard.tsx` (volledige herbouw)
+- `src/pages/admin/AdminShell.tsx` (nav opnieuw)
+- `src/pages/admin/Players.tsx` (herbouw)
+- `src/pages/Index.tsx` (PublicSlots sectie)
+
+**Verwijderd:**
+- `src/pages/admin/SundayPlanning.tsx`, `BookingWindows.tsx`, `FixedPlayers.tsx`, `Waitlist.tsx`, `Approvals.tsx` (vervangen door Applications)
+- `src/components/site/ParentBooking.tsx`, `WaitlistForm.tsx`, `src/pages/WaitlistPage.tsx`
+- `supabase/functions/send-sunday-reminders/`, `notify-booking-window/`, `calendly-webhook/` (indien niet meer relevant)
+
+---
+
+### Belangrijk — risico's
+1. **Destructief**: alle bestaande boekingen, zondag-bevestigingen, wachtlijst, fixed players gaan weg. Niet te recoveren.
+2. **Eén lange sessie**: ik ga proberen alles in deze conversatie te doen, maar de migratie + fase 1 stuur ik eerst voor goedkeuring. Daarna bouw ik fase 2 en 3 zonder verdere bevestiging tenzij er keuzes opduiken.
+3. **Email-templates**: ik maak ze sober, in dezelfde stijl als de huidige `booking-confirmation.tsx`. Geen brand-overleg vooraf.
+
+Akkoord? Dan start ik met de migratie (Fase 0) als eerste stap.
