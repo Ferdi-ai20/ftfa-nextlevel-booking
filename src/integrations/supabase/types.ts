@@ -50,67 +50,53 @@ export type Database = {
         }
         Relationships: []
       }
-      booking_window_slots: {
+      applications: {
         Row: {
-          capacity: number
+          birth_year: number | null
+          club: string | null
           created_at: string
+          email: string
+          goal: string | null
           id: string
-          slot_time: string
-          window_id: string
-        }
-        Insert: {
-          capacity?: number
-          created_at?: string
-          id?: string
-          slot_time: string
-          window_id: string
-        }
-        Update: {
-          capacity?: number
-          created_at?: string
-          id?: string
-          slot_time?: string
-          window_id?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "booking_window_slots_window_id_fkey"
-            columns: ["window_id"]
-            isOneToOne: false
-            referencedRelation: "booking_windows"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-      booking_windows: {
-        Row: {
-          audience: Database["public"]["Enums"]["booking_audience"]
-          audience_tags: Database["public"]["Enums"]["waitlist_tag"][]
-          created_at: string
-          date: string
-          id: string
-          is_open: boolean
-          message: string | null
+          notes: string | null
+          parent_name: string
+          phone: string | null
+          player_name: string
+          position: string | null
+          status: Database["public"]["Enums"]["application_status"]
+          team: string | null
           updated_at: string
         }
         Insert: {
-          audience?: Database["public"]["Enums"]["booking_audience"]
-          audience_tags?: Database["public"]["Enums"]["waitlist_tag"][]
+          birth_year?: number | null
+          club?: string | null
           created_at?: string
-          date: string
+          email: string
+          goal?: string | null
           id?: string
-          is_open?: boolean
-          message?: string | null
+          notes?: string | null
+          parent_name: string
+          phone?: string | null
+          player_name: string
+          position?: string | null
+          status?: Database["public"]["Enums"]["application_status"]
+          team?: string | null
           updated_at?: string
         }
         Update: {
-          audience?: Database["public"]["Enums"]["booking_audience"]
-          audience_tags?: Database["public"]["Enums"]["waitlist_tag"][]
+          birth_year?: number | null
+          club?: string | null
           created_at?: string
-          date?: string
+          email?: string
+          goal?: string | null
           id?: string
-          is_open?: boolean
-          message?: string | null
+          notes?: string | null
+          parent_name?: string
+          phone?: string | null
+          player_name?: string
+          position?: string | null
+          status?: Database["public"]["Enums"]["application_status"]
+          team?: string | null
           updated_at?: string
         }
         Relationships: []
@@ -118,24 +104,63 @@ export type Database = {
       bookings: {
         Row: {
           created_at: string
+          guest_birth_year: number | null
+          guest_club: string | null
+          guest_email: string | null
+          guest_goal: string | null
+          guest_name: string | null
+          guest_notes: string | null
+          guest_phone: string | null
+          guest_position: string | null
+          guest_team: string | null
           id: string
+          payment_method: Database["public"]["Enums"]["payment_method"] | null
+          payment_status: Database["public"]["Enums"]["payment_status"]
           player_id: string | null
+          profile_id: string | null
           slot_id: string
-          user_id: string
+          status: Database["public"]["Enums"]["booking_status"]
+          updated_at: string
         }
         Insert: {
           created_at?: string
+          guest_birth_year?: number | null
+          guest_club?: string | null
+          guest_email?: string | null
+          guest_goal?: string | null
+          guest_name?: string | null
+          guest_notes?: string | null
+          guest_phone?: string | null
+          guest_position?: string | null
+          guest_team?: string | null
           id?: string
+          payment_method?: Database["public"]["Enums"]["payment_method"] | null
+          payment_status?: Database["public"]["Enums"]["payment_status"]
           player_id?: string | null
+          profile_id?: string | null
           slot_id: string
-          user_id: string
+          status?: Database["public"]["Enums"]["booking_status"]
+          updated_at?: string
         }
         Update: {
           created_at?: string
+          guest_birth_year?: number | null
+          guest_club?: string | null
+          guest_email?: string | null
+          guest_goal?: string | null
+          guest_name?: string | null
+          guest_notes?: string | null
+          guest_phone?: string | null
+          guest_position?: string | null
+          guest_team?: string | null
           id?: string
+          payment_method?: Database["public"]["Enums"]["payment_method"] | null
+          payment_status?: Database["public"]["Enums"]["payment_status"]
           player_id?: string | null
+          profile_id?: string | null
           slot_id?: string
-          user_id?: string
+          status?: Database["public"]["Enums"]["booking_status"]
+          updated_at?: string
         }
         Relationships: [
           {
@@ -146,10 +171,17 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "bookings_profile_id_fkey"
+            columns: ["profile_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "bookings_slot_id_fkey"
             columns: ["slot_id"]
             isOneToOne: false
-            referencedRelation: "booking_window_slots"
+            referencedRelation: "training_slots"
             referencedColumns: ["id"]
           },
         ]
@@ -241,132 +273,56 @@ export type Database = {
         }
         Relationships: []
       }
-      external_bookings: {
+      feedback: {
         Row: {
           created_at: string
-          ends_at: string | null
-          event_uri: string
+          created_by: string | null
+          development_points: string | null
+          feedback_text: string | null
           id: string
-          invitee_email: string | null
-          invitee_name: string | null
-          parent_user_id: string | null
-          player_id: string | null
-          raw: Json | null
-          scheduled_at: string
-          source: string
-          status: string
-          training_type: string | null
+          player_id: string
+          slot_id: string | null
+          strengths: string | null
           updated_at: string
+          visible_to_player: boolean
         }
         Insert: {
           created_at?: string
-          ends_at?: string | null
-          event_uri: string
+          created_by?: string | null
+          development_points?: string | null
+          feedback_text?: string | null
           id?: string
-          invitee_email?: string | null
-          invitee_name?: string | null
-          parent_user_id?: string | null
-          player_id?: string | null
-          raw?: Json | null
-          scheduled_at: string
-          source?: string
-          status?: string
-          training_type?: string | null
+          player_id: string
+          slot_id?: string | null
+          strengths?: string | null
           updated_at?: string
+          visible_to_player?: boolean
         }
         Update: {
           created_at?: string
-          ends_at?: string | null
-          event_uri?: string
+          created_by?: string | null
+          development_points?: string | null
+          feedback_text?: string | null
           id?: string
-          invitee_email?: string | null
-          invitee_name?: string | null
-          parent_user_id?: string | null
-          player_id?: string | null
-          raw?: Json | null
-          scheduled_at?: string
-          source?: string
-          status?: string
-          training_type?: string | null
+          player_id?: string
+          slot_id?: string | null
+          strengths?: string | null
           updated_at?: string
+          visible_to_player?: boolean
         }
         Relationships: [
           {
-            foreignKeyName: "external_bookings_player_id_fkey"
+            foreignKeyName: "feedback_player_id_fkey"
             columns: ["player_id"]
             isOneToOne: false
             referencedRelation: "players"
             referencedColumns: ["id"]
           },
-        ]
-      }
-      fixed_players: {
-        Row: {
-          active: boolean
-          created_at: string
-          id: string
-          name: string
-          notes: string | null
-          phone: string
-          slot_day: string
-          slot_time: string
-        }
-        Insert: {
-          active?: boolean
-          created_at?: string
-          id?: string
-          name: string
-          notes?: string | null
-          phone: string
-          slot_day?: string
-          slot_time: string
-        }
-        Update: {
-          active?: boolean
-          created_at?: string
-          id?: string
-          name?: string
-          notes?: string | null
-          phone?: string
-          slot_day?: string
-          slot_time?: string
-        }
-        Relationships: []
-      }
-      fixed_sunday_slots: {
-        Row: {
-          active: boolean
-          created_at: string
-          duration_minutes: number
-          id: string
-          player_id: string
-          slot_time: string
-          updated_at: string
-        }
-        Insert: {
-          active?: boolean
-          created_at?: string
-          duration_minutes?: number
-          id?: string
-          player_id: string
-          slot_time: string
-          updated_at?: string
-        }
-        Update: {
-          active?: boolean
-          created_at?: string
-          duration_minutes?: number
-          id?: string
-          player_id?: string
-          slot_time?: string
-          updated_at?: string
-        }
-        Relationships: [
           {
-            foreignKeyName: "fixed_sunday_slots_player_id_fkey"
-            columns: ["player_id"]
+            foreignKeyName: "feedback_slot_id_fkey"
+            columns: ["slot_id"]
             isOneToOne: false
-            referencedRelation: "players"
+            referencedRelation: "training_slots"
             referencedColumns: ["id"]
           },
         ]
@@ -400,63 +356,53 @@ export type Database = {
       }
       players: {
         Row: {
-          birthdate: string | null
+          birth_year: number | null
           club: string | null
           created_at: string
-          email: string | null
           id: string
-          level: Database["public"]["Enums"]["player_level"] | null
           notes: string | null
-          parent_name: string | null
-          parent_user_id: string | null
-          phone: string | null
+          parent_profile_id: string
           player_name: string
           position: string | null
-          preferred_time_from: string | null
-          preferred_time_to: string | null
+          status: Database["public"]["Enums"]["player_status"]
           team: string | null
-          training_type: Database["public"]["Enums"]["training_type"] | null
           updated_at: string
         }
         Insert: {
-          birthdate?: string | null
+          birth_year?: number | null
           club?: string | null
           created_at?: string
-          email?: string | null
           id?: string
-          level?: Database["public"]["Enums"]["player_level"] | null
           notes?: string | null
-          parent_name?: string | null
-          parent_user_id?: string | null
-          phone?: string | null
+          parent_profile_id: string
           player_name: string
           position?: string | null
-          preferred_time_from?: string | null
-          preferred_time_to?: string | null
+          status?: Database["public"]["Enums"]["player_status"]
           team?: string | null
-          training_type?: Database["public"]["Enums"]["training_type"] | null
           updated_at?: string
         }
         Update: {
-          birthdate?: string | null
+          birth_year?: number | null
           club?: string | null
           created_at?: string
-          email?: string | null
           id?: string
-          level?: Database["public"]["Enums"]["player_level"] | null
           notes?: string | null
-          parent_name?: string | null
-          parent_user_id?: string | null
-          phone?: string | null
+          parent_profile_id?: string
           player_name?: string
           position?: string | null
-          preferred_time_from?: string | null
-          preferred_time_to?: string | null
+          status?: Database["public"]["Enums"]["player_status"]
           team?: string | null
-          training_type?: Database["public"]["Enums"]["training_type"] | null
           updated_at?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "players_parent_profile_id_fkey"
+            columns: ["parent_profile_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       profiles: {
         Row: {
@@ -465,6 +411,7 @@ export type Database = {
           full_name: string | null
           id: string
           phone: string | null
+          status: Database["public"]["Enums"]["profile_status"]
           updated_at: string
         }
         Insert: {
@@ -473,6 +420,7 @@ export type Database = {
           full_name?: string | null
           id: string
           phone?: string | null
+          status?: Database["public"]["Enums"]["profile_status"]
           updated_at?: string
         }
         Update: {
@@ -481,6 +429,7 @@ export type Database = {
           full_name?: string | null
           id?: string
           phone?: string | null
+          status?: Database["public"]["Enums"]["profile_status"]
           updated_at?: string
         }
         Relationships: []
@@ -509,6 +458,69 @@ export type Database = {
         }
         Relationships: []
       }
+      training_slots: {
+        Row: {
+          admin_note: string | null
+          auto_public_enabled: boolean
+          auto_public_hours_before: number
+          auto_public_min_bookings_threshold: number
+          created_at: string
+          created_by: string | null
+          date: string
+          end_time: string
+          id: string
+          location: string | null
+          max_players: number
+          player_note: string | null
+          price_per_player: number | null
+          start_time: string
+          status: Database["public"]["Enums"]["slot_status"]
+          training_type: Database["public"]["Enums"]["training_type"]
+          updated_at: string
+          visibility: Database["public"]["Enums"]["slot_visibility"]
+        }
+        Insert: {
+          admin_note?: string | null
+          auto_public_enabled?: boolean
+          auto_public_hours_before?: number
+          auto_public_min_bookings_threshold?: number
+          created_at?: string
+          created_by?: string | null
+          date: string
+          end_time: string
+          id?: string
+          location?: string | null
+          max_players?: number
+          player_note?: string | null
+          price_per_player?: number | null
+          start_time: string
+          status?: Database["public"]["Enums"]["slot_status"]
+          training_type: Database["public"]["Enums"]["training_type"]
+          updated_at?: string
+          visibility?: Database["public"]["Enums"]["slot_visibility"]
+        }
+        Update: {
+          admin_note?: string | null
+          auto_public_enabled?: boolean
+          auto_public_hours_before?: number
+          auto_public_min_bookings_threshold?: number
+          created_at?: string
+          created_by?: string | null
+          date?: string
+          end_time?: string
+          id?: string
+          location?: string | null
+          max_players?: number
+          player_note?: string | null
+          price_per_player?: number | null
+          start_time?: string
+          status?: Database["public"]["Enums"]["slot_status"]
+          training_type?: Database["public"]["Enums"]["training_type"]
+          updated_at?: string
+          visibility?: Database["public"]["Enums"]["slot_visibility"]
+        }
+        Relationships: []
+      }
       user_roles: {
         Row: {
           created_at: string
@@ -529,225 +541,6 @@ export type Database = {
           user_id?: string
         }
         Relationships: []
-      }
-      waitlist: {
-        Row: {
-          age: number | null
-          club: string | null
-          created_at: string
-          id: string
-          level: string | null
-          name: string
-          other_availability: string | null
-          phone: string
-          preferred_slots: string[]
-          status: string
-        }
-        Insert: {
-          age?: number | null
-          club?: string | null
-          created_at?: string
-          id?: string
-          level?: string | null
-          name: string
-          other_availability?: string | null
-          phone: string
-          preferred_slots?: string[]
-          status?: string
-        }
-        Update: {
-          age?: number | null
-          club?: string | null
-          created_at?: string
-          id?: string
-          level?: string | null
-          name?: string
-          other_availability?: string | null
-          phone?: string
-          preferred_slots?: string[]
-          status?: string
-        }
-        Relationships: []
-      }
-      waitlist_entries: {
-        Row: {
-          available_days: string[]
-          available_times: string | null
-          birthdate: string | null
-          club: string | null
-          created_at: string
-          email: string | null
-          id: string
-          last_contact_at: string | null
-          level: Database["public"]["Enums"]["player_level"] | null
-          notes: string | null
-          parent_name: string | null
-          phone: string
-          player_name: string
-          position: string | null
-          status: Database["public"]["Enums"]["waitlist_status"]
-          team: string | null
-          training_type: Database["public"]["Enums"]["training_type"] | null
-          updated_at: string
-        }
-        Insert: {
-          available_days?: string[]
-          available_times?: string | null
-          birthdate?: string | null
-          club?: string | null
-          created_at?: string
-          email?: string | null
-          id?: string
-          last_contact_at?: string | null
-          level?: Database["public"]["Enums"]["player_level"] | null
-          notes?: string | null
-          parent_name?: string | null
-          phone: string
-          player_name: string
-          position?: string | null
-          status?: Database["public"]["Enums"]["waitlist_status"]
-          team?: string | null
-          training_type?: Database["public"]["Enums"]["training_type"] | null
-          updated_at?: string
-        }
-        Update: {
-          available_days?: string[]
-          available_times?: string | null
-          birthdate?: string | null
-          club?: string | null
-          created_at?: string
-          email?: string | null
-          id?: string
-          last_contact_at?: string | null
-          level?: Database["public"]["Enums"]["player_level"] | null
-          notes?: string | null
-          parent_name?: string | null
-          phone?: string
-          player_name?: string
-          position?: string | null
-          status?: Database["public"]["Enums"]["waitlist_status"]
-          team?: string | null
-          training_type?: Database["public"]["Enums"]["training_type"] | null
-          updated_at?: string
-        }
-        Relationships: []
-      }
-      waitlist_entry_tags: {
-        Row: {
-          created_at: string
-          entry_id: string
-          id: string
-          tag: Database["public"]["Enums"]["waitlist_tag"]
-        }
-        Insert: {
-          created_at?: string
-          entry_id: string
-          id?: string
-          tag: Database["public"]["Enums"]["waitlist_tag"]
-        }
-        Update: {
-          created_at?: string
-          entry_id?: string
-          id?: string
-          tag?: Database["public"]["Enums"]["waitlist_tag"]
-        }
-        Relationships: [
-          {
-            foreignKeyName: "waitlist_entry_tags_entry_id_fkey"
-            columns: ["entry_id"]
-            isOneToOne: false
-            referencedRelation: "waitlist_entries"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-      weekly_attendance: {
-        Row: {
-          available_from: string | null
-          available_to: string | null
-          created_at: string
-          fixed_player_id: string
-          id: string
-          session_date: string
-          status: string
-        }
-        Insert: {
-          available_from?: string | null
-          available_to?: string | null
-          created_at?: string
-          fixed_player_id: string
-          id?: string
-          session_date: string
-          status: string
-        }
-        Update: {
-          available_from?: string | null
-          available_to?: string | null
-          created_at?: string
-          fixed_player_id?: string
-          id?: string
-          session_date?: string
-          status?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "weekly_attendance_fixed_player_id_fkey"
-            columns: ["fixed_player_id"]
-            isOneToOne: false
-            referencedRelation: "fixed_players"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-      weekly_confirmations: {
-        Row: {
-          alt_from: string | null
-          alt_to: string | null
-          created_at: string
-          id: string
-          locked: boolean
-          note: string | null
-          player_id: string
-          responded_by: string | null
-          session_date: string
-          status: Database["public"]["Enums"]["confirmation_status"]
-          updated_at: string
-        }
-        Insert: {
-          alt_from?: string | null
-          alt_to?: string | null
-          created_at?: string
-          id?: string
-          locked?: boolean
-          note?: string | null
-          player_id: string
-          responded_by?: string | null
-          session_date: string
-          status: Database["public"]["Enums"]["confirmation_status"]
-          updated_at?: string
-        }
-        Update: {
-          alt_from?: string | null
-          alt_to?: string | null
-          created_at?: string
-          id?: string
-          locked?: boolean
-          note?: string | null
-          player_id?: string
-          responded_by?: string | null
-          session_date?: string
-          status?: Database["public"]["Enums"]["confirmation_status"]
-          updated_at?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "weekly_confirmations_player_id_fkey"
-            columns: ["player_id"]
-            isOneToOne: false
-            referencedRelation: "players"
-            referencedColumns: ["id"]
-          },
-        ]
       }
     }
     Views: {
@@ -789,15 +582,30 @@ export type Database = {
     }
     Enums: {
       app_role: "admin" | "user"
+      application_status: "pending" | "approved" | "rejected"
       booking_audience: "everyone" | "waitlist_only" | "tagged_only"
+      booking_status:
+        | "confirmed"
+        | "pending_review"
+        | "pending_payment"
+        | "cancelled_by_player"
+        | "cancelled_by_admin"
+        | "no_show"
+        | "completed"
       confirmation_status: "attending" | "not_attending" | "different_time"
       note_subject: "player" | "waitlist_entry"
+      payment_method: "cash" | "bank_transfer" | "tikkie" | "online"
+      payment_status: "not_required" | "unpaid" | "paid" | "refunded"
       player_level:
         | "BVO"
         | "Divisie"
         | "Hoofdklasse"
         | "Eerste klasse"
         | "Recreatief"
+      player_status: "active" | "inactive"
+      profile_status: "pending" | "active" | "inactive"
+      slot_status: "open" | "reserved" | "booked" | "cancelled" | "expired"
+      slot_visibility: "private" | "public" | "hidden"
       training_type: "1-on-1" | "Duo" | "Group"
       waitlist_status:
         | "new"
@@ -939,9 +747,21 @@ export const Constants = {
   public: {
     Enums: {
       app_role: ["admin", "user"],
+      application_status: ["pending", "approved", "rejected"],
       booking_audience: ["everyone", "waitlist_only", "tagged_only"],
+      booking_status: [
+        "confirmed",
+        "pending_review",
+        "pending_payment",
+        "cancelled_by_player",
+        "cancelled_by_admin",
+        "no_show",
+        "completed",
+      ],
       confirmation_status: ["attending", "not_attending", "different_time"],
       note_subject: ["player", "waitlist_entry"],
+      payment_method: ["cash", "bank_transfer", "tikkie", "online"],
+      payment_status: ["not_required", "unpaid", "paid", "refunded"],
       player_level: [
         "BVO",
         "Divisie",
@@ -949,6 +769,10 @@ export const Constants = {
         "Eerste klasse",
         "Recreatief",
       ],
+      player_status: ["active", "inactive"],
+      profile_status: ["pending", "active", "inactive"],
+      slot_status: ["open", "reserved", "booked", "cancelled", "expired"],
+      slot_visibility: ["private", "public", "hidden"],
       training_type: ["1-on-1", "Duo", "Group"],
       waitlist_status: [
         "new",
