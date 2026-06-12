@@ -13,6 +13,7 @@ import AdminShell from "./pages/admin/AdminShell.tsx";
 import Calendar from "./pages/admin/Calendar.tsx";
 import Applications from "./pages/admin/Applications.tsx";
 import Players from "./pages/admin/Players.tsx";
+import Feedback from "./pages/admin/Feedback.tsx";
 import Settings from "./pages/admin/Settings.tsx";
 import NotFound from "./pages/NotFound.tsx";
 
@@ -35,6 +36,7 @@ const App = () => (
               <Route index element={<Calendar />} />
               <Route path="applications" element={<Applications />} />
               <Route path="players" element={<Players />} />
+              <Route path="feedback" element={<Feedback />} />
               <Route path="settings" element={<Settings />} />
             </Route>
             <Route path="*" element={<NotFound />} />
