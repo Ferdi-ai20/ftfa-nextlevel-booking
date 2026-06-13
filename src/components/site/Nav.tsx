@@ -4,13 +4,14 @@ import { useAuth } from "@/hooks/useAuth";
 
 const navItems = [
   { href: "#top", label: "Home", n: "01" },
-  { href: "#about", label: "About", n: "02" },
-  { href: "#philosophy", label: "Philosophy", n: "03" },
-  { href: "#framework", label: "Method", n: "04" },
-  { href: "#programs", label: "Trainings", n: "05" },
-  { href: "#booking", label: "Booking", n: "06" },
-  { href: "#results", label: "Testimonials", n: "07" },
-  { href: "#contact", label: "Contact", n: "08" },
+  { href: "#academy", label: "FTFA Academy", n: "02" },
+  { href: "#environment", label: "Training Environment", n: "03" },
+  { href: "#framework", label: "Framework", n: "04" },
+  { href: "#players", label: "Players", n: "05" },
+  { href: "#results-stats", label: "Results", n: "06" },
+  { href: "#testimonials", label: "Testimonials", n: "07" },
+  { href: "#apply", label: "Apply", n: "08" },
+  { href: "#contact", label: "Contact", n: "09" },
 ];
 
 const Nav = () => {

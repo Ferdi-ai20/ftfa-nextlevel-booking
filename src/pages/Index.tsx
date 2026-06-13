@@ -1,14 +1,14 @@
 import Nav from "@/components/site/Nav";
 import Hero from "@/components/site/Hero";
 import About from "@/components/site/About";
-import Philosophy from "@/components/site/Philosophy";
+import Environment from "@/components/site/Environment";
 import Framework from "@/components/site/Framework";
-
+import Players from "@/components/site/Players";
+import Results from "@/components/site/Results";
+import Coach from "@/components/site/Coach";
 import PublicSlots from "@/components/site/PublicSlots";
 import WaitlistForm from "@/components/site/WaitlistForm";
 import Proof from "@/components/site/Proof";
-import Coach from "@/components/site/Coach";
-import Social from "@/components/site/Social";
 import CTA from "@/components/site/CTA";
 import Footer from "@/components/site/Footer";
 import StickyCTA from "@/components/site/StickyCTA";
@@ -19,14 +19,14 @@ const Index = () => {
       <Nav />
       <Hero />
       <About />
-      <Philosophy />
+      <Environment />
       <Framework />
+      <Players />
+      <Results />
       <Coach />
-      
+      <Proof />
       <PublicSlots />
       <WaitlistForm />
-      <Proof />
-      <Social />
       <CTA />
       <Footer />
       <StickyCTA />
