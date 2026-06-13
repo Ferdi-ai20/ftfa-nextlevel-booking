@@ -34,19 +34,6 @@ const Programs = () => {
   return (
     <section id="programs" className="relative py-28 md:py-40 border-b border-white/10 bg-black">
       <div className="px-6 md:px-12 max-w-[1600px] mx-auto">
-        <div className="grid md:grid-cols-12 gap-10 md:gap-16 mb-16">
-          <div className="md:col-span-3">
-            <div className="font-mono text-xs uppercase tracking-[0.3em] text-white/50">
-              <span className="text-white/30 mr-2">\</span> Trainings
-            </div>
-          </div>
-          <div className="md:col-span-9">
-            <h2 className="display-font text-[clamp(2.5rem,7vw,6rem)] uppercase leading-[0.9] text-white">
-              Three Paths.<br/><span className="text-white/40">One Standard.</span>
-            </h2>
-          </div>
-        </div>
-
         <div className="grid md:grid-cols-3 gap-px bg-white/10">
           {programs.map((p, i) => (
             <motion.article
