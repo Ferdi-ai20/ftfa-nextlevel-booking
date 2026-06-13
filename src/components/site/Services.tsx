@@ -1,7 +1,7 @@
 import { motion } from "framer-motion";
 import img1Asset from "@/assets/training-1on1-v2.jpg.asset.json";
 const img1 = img1Asset.url;
-import img2Asset from "@/assets/training-group.jpg.asset.json";
+import img2Asset from "@/assets/training-group-v2.jpg.asset.json";
 const img2 = img2Asset.url;
 
 const services = [
@@ -16,7 +16,7 @@ const services = [
     n: "02",
     label: "Academy Small Group Sessions",
     img: img2,
-    objectPosition: "center 65%",
+    objectPosition: "55% 60%",
     desc: "High-tempo sessions with players of similar level. Technique sharpened in realistic 1v1, 2v2 and small-sided games.",
   },
 ];
