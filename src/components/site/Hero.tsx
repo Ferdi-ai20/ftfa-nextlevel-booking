@@ -13,8 +13,7 @@ const Hero = () => {
           <img
             src={heroImage.url}
             alt="Training"
-            className="w-full h-full object-cover"
-            style={{ objectPosition: "center 60%" }}
+            className="w-full h-full object-contain"
           />
           {/* subtle bottom vignette only */}
           <div className="absolute inset-x-0 bottom-0 h-40 bg-gradient-to-t from-black/70 to-transparent" />
