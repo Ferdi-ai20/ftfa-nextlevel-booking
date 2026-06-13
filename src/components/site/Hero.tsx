@@ -47,24 +47,18 @@ const Hero = () => {
           whileInView={{ opacity: 1, y: 0 }}
           viewport={{ once: true, margin: "-100px" }}
           transition={{ duration: 1, ease: [0.22, 1, 0.36, 1] }}
-          className="max-w-6xl mx-auto"
+          className="max-w-5xl mx-auto text-center"
         >
-          <h1 className="display-font text-[clamp(2.75rem,11vw,10rem)] uppercase leading-[0.85] text-white">
-            Developing
-            <br />
-            Technical Players
-            <br />
-            <span className="text-white/40">Who Dominate</span>
-            <br />
-            The 1v1.
+          <h1 className="display-font text-[clamp(2.5rem,7vw,6rem)] uppercase leading-[0.9] text-white">
+            Dominate <span className="text-white/40">The</span> 1v1.
           </h1>
-          <p className="mt-10 max-w-xl text-sm md:text-base text-white/60 leading-relaxed font-mono uppercase tracking-[0.15em]">
+          <p className="mt-8 max-w-xl mx-auto text-sm md:text-base text-white/60 leading-relaxed font-mono uppercase tracking-[0.15em]">
             A private football academy for players chasing the pro level.
             <br className="hidden md:block" />
             Technique, intelligence, mentality — nothing else.
           </p>
 
-          <div className="mt-12 flex flex-col sm:flex-row gap-3">
+          <div className="mt-12 flex flex-col sm:flex-row gap-3 justify-center">
             <a
               href="#booking"
               className="group inline-flex items-center justify-center gap-4 bg-white text-black px-8 py-4 text-[11px] uppercase tracking-[0.3em] font-bold hover:bg-white/85 transition-all"
