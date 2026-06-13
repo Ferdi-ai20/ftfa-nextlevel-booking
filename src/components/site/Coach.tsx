@@ -35,25 +35,25 @@ const Coach = () => {
             transition={{ duration: 0.8 }}
             className="md:col-span-5 md:pt-10"
           >
-            <p className="display-font text-3xl md:text-5xl uppercase text-white leading-[1] tracking-tight">
-              "Detail is the difference."
+            <p className="display-font text-2xl md:text-3xl uppercase text-white leading-[1.1] tracking-tight">
+              "The environment I once missed."
             </p>
+
+            <div className="mt-10 space-y-5 text-white/70 text-base md:text-lg leading-relaxed">
+              <p>
+                Ferdi was always a technical player himself — a player who wanted freedom, creativity and the space to express himself on the pitch. Growing up, that environment was not always there.
+              </p>
+              <p>
+                FTFA Academy was created to give young players the environment he once missed.
+              </p>
+              <p>
+                A place where technical players are encouraged to be brave, creative and dominant in 1v1 — not just to repeat drills, but to find solutions under pressure and express themselves in the modern game.
+              </p>
+            </div>
+
             <div className="mt-10 font-mono text-[10px] uppercase tracking-[0.25em] text-white/50 space-y-1">
               <div className="text-white">Ferdi Tarhan</div>
               <div>Founder · Head Coach</div>
-            </div>
-
-            <div className="mt-12 grid grid-cols-3 gap-px bg-white/10">
-              {[
-                { k: "10+", v: "Years" },
-                { k: "200+", v: "Players" },
-                { k: "12", v: "To BVO" },
-              ].map((s) => (
-                <div key={s.v} className="bg-black p-5">
-                  <div className="display-font text-3xl md:text-4xl text-white">{s.k}</div>
-                  <div className="text-[10px] uppercase tracking-[0.2em] text-white/50 mt-2 font-mono">{s.v}</div>
-                </div>
-              ))}
             </div>
           </motion.div>
         </div>

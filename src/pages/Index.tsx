@@ -4,8 +4,6 @@ import About from "@/components/site/About";
 import Philosophy from "@/components/site/Philosophy";
 import Framework from "@/components/site/Framework";
 import Services from "@/components/site/Services";
-import Players from "@/components/site/Players";
-import Results from "@/components/site/Results";
 import Coach from "@/components/site/Coach";
 import PublicSlots from "@/components/site/PublicSlots";
 import WaitlistForm from "@/components/site/WaitlistForm";
@@ -23,8 +21,6 @@ const Index = () => {
       <Philosophy />
       <Framework />
       <Services />
-      <Players />
-      <Results />
       <Coach />
       <Proof />
       <PublicSlots />
