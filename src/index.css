@@ -1,4 +1,4 @@
-@import url('https://fonts.googleapis.com/css2?family=Anton&family=Inter:wght@300;400;500;600;700;900&family=JetBrains+Mono:wght@400;500&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Anton&family=Bebas+Neue&family=Inter:wght@300;400;500;600;700;900&family=JetBrains+Mono:wght@400;500&display=swap');
 
 @tailwind base;
 @tailwind components;
@@ -7,7 +7,7 @@
 @layer base {
   :root {
     /* FTFA — Elite Football Academy Design System */
-    --background: 0 0% 4%;
+    --background: 0 0% 0%;
     --foreground: 0 0% 98%;
 
     --card: 0 0% 7%;
