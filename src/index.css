@@ -52,8 +52,7 @@
   }
 
   .dark {
-    /* keep dark identical — site is dark-only */
-    --background: 0 0% 4%;
+    --background: 0 0% 0%;
     --foreground: 0 0% 98%;
   }
 
