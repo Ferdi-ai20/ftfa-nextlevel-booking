@@ -1,7 +1,8 @@
 import Nav from "@/components/site/Nav";
 import Hero from "@/components/site/Hero";
-import Marquee from "@/components/site/Marquee";
 import About from "@/components/site/About";
+import Philosophy from "@/components/site/Philosophy";
+import Framework from "@/components/site/Framework";
 import Programs from "@/components/site/Programs";
 import PublicSlots from "@/components/site/PublicSlots";
 import WaitlistForm from "@/components/site/WaitlistForm";
@@ -17,10 +18,11 @@ const Index = () => {
     <main className="bg-background text-foreground">
       <Nav />
       <Hero />
-      <Marquee />
       <About />
-      <Programs />
+      <Philosophy />
+      <Framework />
       <Coach />
+      <Programs />
       <PublicSlots />
       <WaitlistForm />
       <Proof />
