@@ -1,5 +1,6 @@
 import { motion } from "framer-motion";
-import coachImg from "@/assets/coach-ferdi.jpg";
+import coachAsset from "@/assets/coach-ferdi.jpg.asset.json";
+const coachImg = coachAsset.url;
 
 const Coach = () => {
   return (
