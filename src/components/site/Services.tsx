@@ -55,7 +55,9 @@ const Services = () => {
                   alt={s.label}
                   loading="lazy"
                   className="w-full h-full object-cover"
+                  style={{ objectPosition: "center 65%" }}
                 />
+
               </div>
 
               <div className="mt-10 md:mt-14 max-w-2xl">
