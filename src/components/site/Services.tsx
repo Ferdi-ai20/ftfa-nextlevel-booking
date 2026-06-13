@@ -1,6 +1,7 @@
 import { motion } from "framer-motion";
 import img1 from "@/assets/training-1on1.jpg";
-import img2 from "@/assets/training-group.jpg";
+import img2Asset from "@/assets/training-group.jpg.asset.json";
+const img2 = img2Asset.url;
 
 const services = [
   {
