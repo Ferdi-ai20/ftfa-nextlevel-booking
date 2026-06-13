@@ -32,21 +32,22 @@ const programs = [
 
 const Programs = () => {
   return (
-    <section id="programs" className="relative py-24 md:py-32 border-b border-border">
-      <div className="container">
-        <div className="flex flex-col md:flex-row md:items-end justify-between mb-16 gap-6">
-          <div>
-            <div className="text-xs uppercase tracking-[0.3em] text-primary mb-4">/ 03 — Programs</div>
-            <h2 className="display-font text-5xl md:text-7xl uppercase leading-[0.9]">
-              Three Paths.<br/>One Standard.
+    <section id="programs" className="relative py-28 md:py-40 border-b border-white/10 bg-black">
+      <div className="px-6 md:px-12 max-w-[1600px] mx-auto">
+        <div className="grid md:grid-cols-12 gap-10 md:gap-16 mb-16">
+          <div className="md:col-span-3">
+            <div className="font-mono text-xs uppercase tracking-[0.3em] text-white/50">
+              <span className="text-white/30 mr-2">\</span> Trainings
+            </div>
+          </div>
+          <div className="md:col-span-9">
+            <h2 className="display-font text-[clamp(2.5rem,7vw,6rem)] uppercase leading-[0.9] text-white">
+              Three Paths.<br/><span className="text-white/40">One Standard.</span>
             </h2>
           </div>
-          <p className="text-muted-foreground max-w-sm">
-            One principle across every program: only what produces real progression.
-          </p>
         </div>
 
-        <div className="grid md:grid-cols-3 gap-px bg-border">
+        <div className="grid md:grid-cols-3 gap-px bg-white/10">
           {programs.map((p, i) => (
             <motion.article
               key={p.n}
@@ -54,7 +55,7 @@ const Programs = () => {
               whileInView={{ opacity: 1, y: 0 }}
               viewport={{ once: true, margin: "-80px" }}
               transition={{ duration: 0.6, delay: i * 0.1 }}
-              className="group bg-background hover:bg-card transition-colors flex flex-col"
+              className="group bg-black flex flex-col"
             >
               <div className="relative aspect-[4/5] overflow-hidden">
                 <img
@@ -63,26 +64,26 @@ const Programs = () => {
                   loading="lazy"
                   width={1280}
                   height={1600}
-                  className="w-full h-full object-cover grayscale group-hover:grayscale-0 group-hover:scale-105 transition-all duration-700"
+                  className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-700"
                 />
-                <div className="absolute inset-0 bg-gradient-to-t from-background via-background/20 to-transparent" />
-                <div className="absolute top-4 left-4 display-font text-5xl text-primary">{p.n}</div>
-                <div className="absolute bottom-4 left-4 right-4">
-                  <div className="text-[10px] uppercase tracking-[0.2em] text-primary mb-1">{p.level}</div>
-                  <h3 className="display-font text-3xl uppercase">{p.title}</h3>
+                <div className="absolute inset-0 bg-gradient-to-t from-black via-black/30 to-transparent" />
+                <div className="absolute top-5 left-5 font-mono text-[10px] uppercase tracking-[0.3em] text-white/70">{p.n}</div>
+                <div className="absolute bottom-5 left-5 right-5">
+                  <div className="font-mono text-[10px] uppercase tracking-[0.25em] text-white/70 mb-2">{p.level}</div>
+                  <h3 className="display-font text-3xl md:text-4xl uppercase text-white">{p.title}</h3>
                 </div>
               </div>
-              <div className="p-6 flex flex-col flex-1">
-                <p className="text-sm text-muted-foreground leading-relaxed">{p.desc}</p>
-                <ul className="mt-6 space-y-2 flex-1">
+              <div className="p-6 md:p-8 flex flex-col flex-1">
+                <p className="text-sm md:text-base text-white/70 leading-relaxed">{p.desc}</p>
+                <ul className="mt-6 space-y-3 flex-1">
                   {p.outcomes.map((o) => (
-                    <li key={o} className="flex items-start gap-3 text-sm">
-                      <span className="text-primary mt-[3px]">→</span>
+                    <li key={o} className="flex items-start gap-3 text-sm text-white/80">
+                      <span className="text-white/40 mt-[3px]">→</span>
                       <span>{o}</span>
                     </li>
                   ))}
                 </ul>
-                <a href="#booking" className="mt-8 inline-flex items-center justify-between border-t border-border pt-4 text-xs uppercase tracking-widest font-semibold group/cta">
+                <a href="#booking" className="mt-8 inline-flex items-center justify-between border-t border-white/10 pt-4 font-mono text-[10px] uppercase tracking-[0.3em] text-white/70 hover:text-white group/cta">
                   <span>Reserve Spot</span>
                   <span className="transition-transform group-hover/cta:translate-x-1">→</span>
                 </a>
