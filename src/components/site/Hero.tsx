@@ -1,7 +1,33 @@
+import { useEffect, useState } from "react";
 import { motion } from "framer-motion";
 import heroImage from "@/assets/hero-training.jpg.asset.json";
 
+const STORAGE_KEY = "hero-object-position-y";
+
 const Hero = () => {
+  const [posY, setPosY] = useState<number>(() => {
+    if (typeof window === "undefined") return 50;
+    const saved = window.localStorage.getItem(STORAGE_KEY);
+    return saved ? Number(saved) : 50;
+  });
+  const [showSlider, setShowSlider] = useState(false);
+
+  useEffect(() => {
+    window.localStorage.setItem(STORAGE_KEY, String(posY));
+  }, [posY]);
+
+  // Toggle slider with "P" key (for "position")
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key.toLowerCase() === "p" && (e.ctrlKey || e.metaKey)) {
+        e.preventDefault();
+        setShowSlider((s) => !s);
+      }
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, []);
+
   return (
     <>
       {/* Full-bleed image — no text overlay */}
@@ -14,11 +40,51 @@ const Hero = () => {
             src={heroImage.url}
             alt="Training"
             className="w-full h-full object-cover"
-            style={{ objectPosition: "center 85%" }}
+            style={{ objectPosition: `center ${posY}%` }}
           />
           {/* subtle bottom vignette only */}
           <div className="absolute inset-x-0 bottom-0 h-40 bg-gradient-to-t from-black/70 to-transparent" />
         </div>
+
+        {/* Position slider toggle button */}
+        <button
+          type="button"
+          onClick={() => setShowSlider((s) => !s)}
+          className="absolute top-4 right-4 z-20 bg-black/60 backdrop-blur text-white text-[10px] font-mono uppercase tracking-[0.2em] px-3 py-2 border border-white/20 hover:bg-black/80"
+          aria-label="Toggle position slider"
+        >
+          {showSlider ? "Hide" : "Position"}
+        </button>
+
+        {/* Slider panel */}
+        {showSlider && (
+          <div className="absolute top-16 right-4 z-20 bg-black/70 backdrop-blur border border-white/20 p-4 w-64 text-white">
+            <div className="flex items-center justify-between mb-2 font-mono text-[10px] uppercase tracking-[0.2em]">
+              <span>Vertical</span>
+              <span>{posY}%</span>
+            </div>
+            <input
+              type="range"
+              min={0}
+              max={100}
+              step={1}
+              value={posY}
+              onChange={(e) => setPosY(Number(e.target.value))}
+              className="w-full accent-white"
+            />
+            <div className="flex justify-between mt-1 font-mono text-[9px] text-white/50 uppercase tracking-[0.2em]">
+              <span>Top</span>
+              <span>Bottom</span>
+            </div>
+            <button
+              type="button"
+              onClick={() => setPosY(50)}
+              className="mt-3 w-full text-[10px] font-mono uppercase tracking-[0.2em] border border-white/20 py-1.5 hover:bg-white/10"
+            >
+              Reset
+            </button>
+          </div>
+        )}
 
         {/* Scroll indicator */}
         <a
@@ -37,6 +103,7 @@ const Hero = () => {
           </svg>
         </a>
       </section>
+
 
       {/* Text section — appears after scrolling */}
       <section
