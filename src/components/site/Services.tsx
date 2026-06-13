@@ -1,5 +1,6 @@
 import { motion } from "framer-motion";
-import img1 from "@/assets/training-1on1.jpg";
+import img1Asset from "@/assets/training-1on1.jpg.asset.json";
+const img1 = img1Asset.url;
 import img2Asset from "@/assets/training-group.jpg.asset.json";
 const img2 = img2Asset.url;
 
