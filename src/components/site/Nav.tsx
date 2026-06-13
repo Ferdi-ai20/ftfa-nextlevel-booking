@@ -7,11 +7,10 @@ const navItems = [
   { href: "#philosophy", label: "Philosophy", n: "02" },
   { href: "#framework", label: "Framework", n: "03" },
   { href: "#services", label: "Services", n: "04" },
-  { href: "#players", label: "Players", n: "05" },
-  { href: "#results-stats", label: "Results", n: "06" },
-  { href: "#testimonials", label: "Testimonials", n: "07" },
-  { href: "#apply", label: "Apply", n: "08" },
-  { href: "#contact", label: "Contact", n: "09" },
+  { href: "#coach", label: "The Coach", n: "05" },
+  { href: "#testimonials", label: "Testimonials", n: "06" },
+  { href: "#apply", label: "Apply", n: "07" },
+  { href: "#contact", label: "Contact", n: "08" },
 ];
 
 const Nav = () => {
