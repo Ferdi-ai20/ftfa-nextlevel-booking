@@ -35,13 +35,15 @@ const Philosophy = () => {
           <div className="font-mono text-xs uppercase tracking-[0.3em] text-white/50 text-center mb-12">
             <span className="text-white/30 mr-2">\</span> Working With Players From
           </div>
-          <div className="flex flex-wrap justify-center items-center gap-x-12 gap-y-8">
-            {clubLogos.map(({ name, Logo }) => (
-              <Logo
-                key={name}
-                className="h-8 md:h-10 w-auto text-white/40 hover:text-white transition-colors duration-500"
-              />
-            ))}
+          <div className="relative overflow-hidden [mask-image:linear-gradient(to_right,transparent,black_10%,black_90%,transparent)]">
+            <div className="flex w-max animate-marquee gap-x-16 items-center">
+              {[...clubLogos, ...clubLogos, ...clubLogos].map(({ name, Logo }, i) => (
+                <Logo
+                  key={`${name}-${i}`}
+                  className="h-8 md:h-10 w-auto text-white/40 shrink-0"
+                />
+              ))}
+            </div>
           </div>
         </div>
       </div>
