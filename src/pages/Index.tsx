@@ -3,7 +3,7 @@ import Hero from "@/components/site/Hero";
 import About from "@/components/site/About";
 import Philosophy from "@/components/site/Philosophy";
 import Framework from "@/components/site/Framework";
-import Programs from "@/components/site/Programs";
+
 import PublicSlots from "@/components/site/PublicSlots";
 import WaitlistForm from "@/components/site/WaitlistForm";
 import Proof from "@/components/site/Proof";
@@ -22,7 +22,7 @@ const Index = () => {
       <Philosophy />
       <Framework />
       <Coach />
-      <Programs />
+      
       <PublicSlots />
       <WaitlistForm />
       <Proof />
