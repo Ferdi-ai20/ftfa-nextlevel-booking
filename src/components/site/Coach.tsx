@@ -5,35 +5,48 @@ const Coach = () => {
   return (
     <section id="coach" className="relative py-28 md:py-40 border-b border-white/10 bg-black overflow-hidden">
       <div className="px-6 md:px-12 max-w-[1600px] mx-auto">
-        <div className="grid md:grid-cols-12 gap-10 md:gap-16 mb-16">
-          <div className="md:col-span-3">
-            <div className="font-mono text-xs uppercase tracking-[0.3em] text-white/50">
-              <span className="text-white/30 mr-2">\</span> The Coach
-            </div>
-          </div>
-        </div>
+        <motion.h2
+          initial={{ opacity: 0, y: 30 }}
+          whileInView={{ opacity: 1, y: 0 }}
+          viewport={{ once: true, margin: "-100px" }}
+          transition={{ duration: 0.8 }}
+          className="display-font text-[clamp(2.5rem,8vw,7rem)] uppercase leading-[0.9] text-white tracking-tight mb-16 md:mb-24"
+        >
+          The Coach
+        </motion.h2>
 
         <div className="grid md:grid-cols-12 gap-10 md:gap-16 items-start">
+          <motion.div
+            initial={{ opacity: 0, scale: 0.98 }}
+            whileInView={{ opacity: 1, scale: 1 }}
+            viewport={{ once: true }}
+            transition={{ duration: 1 }}
+            className="md:col-span-7"
+          >
+            <div className="relative aspect-[4/5] overflow-hidden bg-white/5">
+              <img src={coachImg} alt="Coach Ferdi Tarhan" loading="lazy" className="w-full h-full object-cover" />
+            </div>
+          </motion.div>
+
           <motion.div
             initial={{ opacity: 0, y: 30 }}
             whileInView={{ opacity: 1, y: 0 }}
             viewport={{ once: true }}
             transition={{ duration: 0.8 }}
-            className="md:col-span-6"
+            className="md:col-span-5 md:pt-10"
           >
-            <h2 className="display-font text-[clamp(2.5rem,7vw,6rem)] uppercase leading-[0.9] text-white">
-              "Detail is<br/>the difference."
-            </h2>
-            <p className="mt-10 text-base md:text-lg text-white/70 leading-relaxed max-w-xl">
-              Ferdi Tarhan brings over a decade of obsession with football technique and tactics to FTFA. Having worked alongside some of the brightest young talents in the Netherlands, he has seen first-hand what it takes to become a professional — and now dedicates his work to the next generation.
+            <p className="display-font text-3xl md:text-5xl uppercase text-white leading-[1] tracking-tight">
+              "Detail is the difference."
             </p>
-            <p className="mt-4 text-base md:text-lg text-white/70 leading-relaxed max-w-xl">
-              Supporting players with the skillset required not only to reach the top, but to stay there.
-            </p>
-            <div className="mt-10 grid grid-cols-3 gap-px bg-white/10 max-w-md">
+            <div className="mt-10 font-mono text-[10px] uppercase tracking-[0.25em] text-white/50 space-y-1">
+              <div className="text-white">Ferdi Tarhan</div>
+              <div>Founder · Head Coach</div>
+            </div>
+
+            <div className="mt-12 grid grid-cols-3 gap-px bg-white/10">
               {[
-                { k: "10+", v: "Years Coaching" },
-                { k: "200+", v: "Players Trained" },
+                { k: "10+", v: "Years" },
+                { k: "200+", v: "Players" },
                 { k: "12", v: "To BVO" },
               ].map((s) => (
                 <div key={s.v} className="bg-black p-5">
@@ -41,27 +54,6 @@ const Coach = () => {
                   <div className="text-[10px] uppercase tracking-[0.2em] text-white/50 mt-2 font-mono">{s.v}</div>
                 </div>
               ))}
-            </div>
-          </motion.div>
-
-          <motion.div
-            initial={{ opacity: 0, scale: 0.98 }}
-            whileInView={{ opacity: 1, scale: 1 }}
-            viewport={{ once: true }}
-            transition={{ duration: 1 }}
-            className="md:col-span-6"
-          >
-            <div className="relative aspect-[4/5] overflow-hidden bg-white/5">
-              <img
-                src={coachImg}
-                alt="Coach Ferdi Tarhan"
-                loading="lazy"
-                className="w-full h-full object-cover"
-              />
-            </div>
-            <div className="mt-4 flex items-baseline justify-between font-mono text-[10px] uppercase tracking-[0.25em] text-white/50">
-              <span>Ferdi Tarhan</span>
-              <span>Founder · Head Coach</span>
             </div>
           </motion.div>
         </div>
