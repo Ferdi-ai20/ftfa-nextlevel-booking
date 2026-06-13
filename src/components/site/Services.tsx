@@ -1,5 +1,5 @@
 import { motion } from "framer-motion";
-import img1Asset from "@/assets/training-1on1.jpg.asset.json";
+import img1Asset from "@/assets/training-1on1-v2.jpg.asset.json";
 const img1 = img1Asset.url;
 import img2Asset from "@/assets/training-group.jpg.asset.json";
 const img2 = img2Asset.url;
@@ -9,12 +9,14 @@ const services = [
     n: "01",
     label: "1-2-1 Sessions",
     img: img1,
+    objectPosition: "center 55%",
     desc: "Private, fully tailored training built around the individual player — maximum detail, maximum repetition.",
   },
   {
     n: "02",
     label: "Academy Small Group Sessions",
     img: img2,
+    objectPosition: "center 65%",
     desc: "High-tempo sessions with players of similar level. Technique sharpened in realistic 1v1, 2v2 and small-sided games.",
   },
 ];
@@ -55,7 +57,7 @@ const Services = () => {
                   alt={s.label}
                   loading="lazy"
                   className="w-full h-full object-cover"
-                  style={{ objectPosition: "center 65%" }}
+                  style={{ objectPosition: s.objectPosition }}
                 />
 
               </div>
