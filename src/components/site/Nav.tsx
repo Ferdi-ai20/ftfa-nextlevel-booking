@@ -4,9 +4,9 @@ import { useAuth } from "@/hooks/useAuth";
 
 const navItems = [
   { href: "#top", label: "Home", n: "01" },
-  { href: "#academy", label: "FTFA Academy", n: "02" },
-  { href: "#environment", label: "Training Environment", n: "03" },
-  { href: "#framework", label: "Framework", n: "04" },
+  { href: "#philosophy", label: "Philosophy", n: "02" },
+  { href: "#framework", label: "Framework", n: "03" },
+  { href: "#services", label: "Services", n: "04" },
   { href: "#players", label: "Players", n: "05" },
   { href: "#results-stats", label: "Results", n: "06" },
   { href: "#testimonials", label: "Testimonials", n: "07" },
