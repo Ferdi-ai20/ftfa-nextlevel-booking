@@ -5,35 +5,40 @@ const Philosophy = () => {
   return (
     <section id="philosophy" className="relative py-28 md:py-40 border-b border-white/10 bg-black">
       <div className="px-6 md:px-12 max-w-[1600px] mx-auto">
-        <div className="grid md:grid-cols-12 gap-10 md:gap-16">
-          <div className="md:col-span-3">
-            <div className="font-mono text-xs uppercase tracking-[0.3em] text-white/50">
-              <span className="text-white/30 mr-2">\</span> Our Philosophy
-            </div>
-          </div>
+        <motion.h2
+          initial={{ opacity: 0, y: 30 }}
+          whileInView={{ opacity: 1, y: 0 }}
+          viewport={{ once: true, margin: "-100px" }}
+          transition={{ duration: 0.8 }}
+          className="display-font text-[clamp(2.5rem,8vw,7rem)] uppercase leading-[0.9] text-white tracking-tight mb-16 md:mb-20"
+        >
+          FTFA<br /><span className="text-white/40">Philosophy</span>
+        </motion.h2>
+
+        <div className="grid md:grid-cols-12 gap-8 md:gap-16 max-w-5xl">
           <motion.div
-            initial={{ opacity: 0, y: 30 }}
+            initial={{ opacity: 0, y: 20 }}
             whileInView={{ opacity: 1, y: 0 }}
-            viewport={{ once: true, margin: "-100px" }}
-            transition={{ duration: 0.8, ease: [0.22, 1, 0.36, 1] }}
-            className="md:col-span-9"
+            viewport={{ once: true, margin: "-80px" }}
+            transition={{ duration: 0.8, delay: 0.1 }}
+            className="md:col-span-12 space-y-6"
           >
-            <h2 className="display-font text-[clamp(2rem,5vw,4rem)] uppercase leading-[1.05] text-white max-w-4xl">
-              "Technical mastery is only valuable when it can be applied under pressure."
-            </h2>
-            <p className="mt-10 text-base md:text-lg text-white/70 leading-relaxed max-w-3xl">
-              At FTFA, ball mastery is the heart of our coaching philosophy — empowering players with the technical toolbox needed to dominate duels, remain confident in possession, and find creative solutions to eliminate pressure. These are the hallmarks of football's greatest mavericks.
+            <p className="display-font text-2xl md:text-4xl uppercase leading-[1.1] text-white">
+              We believe technical ability only matters when it can be applied under pressure.
             </p>
-            <p className="mt-4 text-base md:text-lg text-white/70 leading-relaxed max-w-3xl">
-              We cultivate these skills through a relentless practice culture, where purposeful repetition meets explosive endurance — delivered with the level of detail found only at the pinnacle of academy football.
+            <p className="text-base md:text-lg text-white/70 leading-relaxed max-w-3xl">
+              Every session is designed to help players recognise, create and execute solutions in realistic football situations.
+            </p>
+            <p className="text-base md:text-lg text-white/70 leading-relaxed max-w-3xl">
+              By combining technical mastery, decision making and game realism, we develop players who can dominate 1v1 situations, stay composed under pressure and express themselves creatively when it matters most.
             </p>
           </motion.div>
         </div>
 
-        {/* Working with players from */}
+        {/* Working with players from — right to left marquee */}
         <div className="mt-28 md:mt-36">
           <div className="font-mono text-xs uppercase tracking-[0.3em] text-white/50 text-center mb-12">
-            <span className="text-white/30 mr-2">\</span> Working With Players From
+            Working With Players From
           </div>
           <div className="relative overflow-hidden [mask-image:linear-gradient(to_right,transparent,black_10%,black_90%,transparent)]">
             <div className="flex w-max animate-marquee gap-x-16 items-center">

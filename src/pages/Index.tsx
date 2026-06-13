@@ -1,8 +1,9 @@
 import Nav from "@/components/site/Nav";
 import Hero from "@/components/site/Hero";
 import About from "@/components/site/About";
-import Environment from "@/components/site/Environment";
+import Philosophy from "@/components/site/Philosophy";
 import Framework from "@/components/site/Framework";
+import Services from "@/components/site/Services";
 import Players from "@/components/site/Players";
 import Results from "@/components/site/Results";
 import Coach from "@/components/site/Coach";
@@ -19,8 +20,9 @@ const Index = () => {
       <Nav />
       <Hero />
       <About />
-      <Environment />
+      <Philosophy />
       <Framework />
+      <Services />
       <Players />
       <Results />
       <Coach />
