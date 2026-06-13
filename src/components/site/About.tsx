@@ -2,48 +2,28 @@ import { motion } from "framer-motion";
 
 const About = () => {
   return (
-    <section id="about" className="relative py-24 md:py-32 border-b border-border">
-      <div className="container">
+    <section id="about" className="relative py-28 md:py-40 border-b border-white/10 bg-black">
+      <div className="px-6 md:px-12 max-w-[1600px] mx-auto">
         <div className="grid md:grid-cols-12 gap-10 md:gap-16">
-          <div className="md:col-span-4">
-            <div className="text-xs uppercase tracking-[0.3em] text-primary mb-4">/ 02 — The Academy</div>
-            <h2 className="display-font text-5xl md:text-7xl uppercase leading-[0.9]">
-              Built for<br/>the<br/><span className="text-primary">Serious.</span>
-            </h2>
-          </div>
-          <div className="md:col-span-7 md:col-start-6 space-y-8">
-            <motion.p
-              initial={{ opacity: 0, y: 20 }}
-              whileInView={{ opacity: 1, y: 0 }}
-              viewport={{ once: true, margin: "-100px" }}
-              transition={{ duration: 0.7 }}
-              className="text-xl md:text-2xl text-foreground leading-relaxed"
-            >
-              FTFA is <span className="text-primary">Ferdi Tarhan</span>'s academy. One obsession: technical execution and game intelligence at the highest level.
-            </motion.p>
-            <motion.p
-              initial={{ opacity: 0, y: 20 }}
-              whileInView={{ opacity: 1, y: 0 }}
-              viewport={{ once: true, margin: "-100px" }}
-              transition={{ duration: 0.7, delay: 0.1 }}
-              className="text-base md:text-lg text-muted-foreground leading-relaxed"
-            >
-              A methodology unique in the Netherlands. Football technique plus intuitive game vision — players who think, decide and execute faster. No fluff.
-            </motion.p>
-
-            <div className="grid grid-cols-2 md:grid-cols-3 gap-px bg-border mt-12">
-              {[
-                { t: "Technique", d: "Premium technical detail work" },
-                { t: "Vision", d: "Intuitive decision-making system" },
-                { t: "Mentality", d: "Pro-level discipline & focus" },
-              ].map((b) => (
-                <div key={b.t} className="bg-background p-6">
-                  <div className="display-font text-2xl uppercase">{b.t}</div>
-                  <div className="text-xs text-muted-foreground mt-2 uppercase tracking-wider">{b.d}</div>
-                </div>
-              ))}
+          <div className="md:col-span-3">
+            <div className="font-mono text-xs uppercase tracking-[0.3em] text-white/50">
+              <span className="text-white/30 mr-2">\</span> Who We Are
             </div>
           </div>
+          <motion.div
+            initial={{ opacity: 0, y: 30 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true, margin: "-100px" }}
+            transition={{ duration: 0.8, ease: [0.22, 1, 0.36, 1] }}
+            className="md:col-span-9 space-y-6"
+          >
+            <p className="text-xl md:text-3xl text-white leading-[1.35] font-light">
+              Welcome to <span className="display-font uppercase tracking-tight">FTFA</span> — the Ferdi Tarhan Football Academy. A private academy dedicated to helping players reach their full potential, from pre-academy all the way through to the professional game.
+            </p>
+            <p className="text-base md:text-lg text-white/60 leading-relaxed max-w-3xl">
+              We work with some of the most talented players across the Netherlands, fostering an environment that breeds technical excellence through the detail delivered, culture created, and standards set.
+            </p>
+          </motion.div>
         </div>
       </div>
     </section>
