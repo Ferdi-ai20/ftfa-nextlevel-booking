@@ -22,7 +22,7 @@ type Row = {
     visibility: string;
     location: string | null;
   } | null;
-  profiles: { full_name: string | null; phone: string | null } | null;
+  profiles: { full_name: string | null; phone: string | null; sticky_note: string | null } | null;
 };
 
 const Bookings = () => {
