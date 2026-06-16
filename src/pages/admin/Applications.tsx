@@ -33,30 +33,14 @@ const Applications = () => {
   };
 
   const approve = async (a: Application) => {
-    // Mark application approved. If user with this email already has profile, also activate it.
-    const { data: prof } = await supabase
-      .from("profiles")
-      .select("id")
-      .eq("phone", a.phone ?? "___none___")
-      .maybeSingle();
-    await supabase.from("applications").update({ status: "approved" }).eq("id", a.id);
-    if (prof) {
-      await supabase.from("profiles").update({ status: "active" }).eq("id", prof.id);
-      await supabase.from("players").insert({
-        parent_profile_id: prof.id,
-        player_name: a.player_name,
-        birth_year: a.birth_year,
-        club: a.club,
-        team: a.team,
-        position: a.position,
-      });
+    const { data, error } = await supabase.functions.invoke("approve-application", {
+      body: { applicationId: a.id },
+    });
+    if (error || (data as any)?.error) {
+      toast.error((data as any)?.error || error?.message || "Goedkeuren mislukt");
+      return;
     }
-    toast.success(prof ? "Goedgekeurd + speler aangemaakt" : "Goedgekeurd. Ouder moet nog account aanmaken met dit telefoonnummer.");
-    void notify("application-decision", a.email, {
-      parentName: a.parent_name,
-      playerName: a.player_name,
-      approved: true,
-    }, `app-approve-${a.id}`);
+    toast.success("Goedgekeurd. Uitnodiging verstuurd.");
     void load();
   };
 
