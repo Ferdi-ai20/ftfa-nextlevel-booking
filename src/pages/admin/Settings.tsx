@@ -79,6 +79,22 @@ const Settings = () => {
             {busy ? "Bezig…" : "Genereer iCal-link"}
           </button>
         )}
+
+        <div className="border-t border-border pt-4 space-y-2 text-xs text-muted-foreground">
+          <div className="font-semibold text-foreground uppercase tracking-widest text-[10px]">Toevoegen aan je agenda</div>
+          <div>
+            <strong className="text-foreground">Google Calendar:</strong> Open <em>calendar.google.com</em> →
+            naast "Andere agenda's" klik op <em>+</em> → <em>Via URL</em> → plak bovenstaande link → <em>Agenda toevoegen</em>.
+          </div>
+          <div>
+            <strong className="text-foreground">Apple Agenda (iPhone / Mac):</strong> Instellingen → <em>Agenda</em> →
+            <em> Accounts</em> → <em>Nieuwe Account</em> → <em>Anders</em> → <em>Voeg Agenda-abonnement toe</em> → plak de link.
+          </div>
+          <div>
+            <strong className="text-foreground">Outlook:</strong> <em>Agenda toevoegen</em> → <em>Vanuit web</em> → plak de link.
+          </div>
+          <div className="italic">Updates worden meestal binnen 1–24 uur automatisch gesynchroniseerd.</div>
+        </div>
       </div>
     </div>
   );
