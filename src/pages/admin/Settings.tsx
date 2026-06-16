@@ -1,124 +1,85 @@
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
+import { useAuth } from "@/hooks/useAuth";
+
+const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL as string;
 
 const Settings = () => {
-  const [open, setOpen] = useState(true);
-  const [closedMsg, setClosedMsg] = useState("");
-  const [cal1, setCal1] = useState("");
-  const [calDuo, setCalDuo] = useState("");
-  const [calGroup, setCalGroup] = useState("");
-  const [calTrial, setCalTrial] = useState("");
-  const [saving, setSaving] = useState(false);
+  const { user } = useAuth();
+  const [token, setToken] = useState<string | null>(null);
+  const [busy, setBusy] = useState(false);
 
   useEffect(() => {
-    supabase
-      .from("app_settings")
-      .select("waitlist_open, closed_message, calendly_url_1on1, calendly_url_duo, calendly_url_group, calendly_url_trial")
-      .eq("id", 1)
-      .maybeSingle()
-      .then(({ data }) => {
-        if (data) {
-          setOpen(data.waitlist_open);
-          setClosedMsg(data.closed_message);
-          setCal1(data.calendly_url_1on1 ?? "");
-          setCalDuo(data.calendly_url_duo ?? "");
-          setCalGroup(data.calendly_url_group ?? "");
-          setCalTrial(data.calendly_url_trial ?? "");
-        }
-      });
-  }, []);
+    if (!user) return;
+    supabase.from("ical_tokens").select("token").eq("user_id", user.id).maybeSingle()
+      .then(({ data }) => setToken(data?.token ?? null));
+  }, [user]);
 
-  const save = async () => {
-    setSaving(true);
-    const { error } = await supabase
-      .from("app_settings")
-      .update({
-        waitlist_open: open,
-        closed_message: closedMsg,
-        calendly_url_1on1: cal1 || null,
-        calendly_url_duo: calDuo || null,
-        calendly_url_group: calGroup || null,
-        calendly_url_trial: calTrial || null,
-        updated_at: new Date().toISOString(),
-      })
-      .eq("id", 1);
-    setSaving(false);
+  const generate = async () => {
+    if (!user) return;
+    setBusy(true);
+    const newToken = crypto.randomUUID().replace(/-/g, "");
+    // Delete old + insert new
+    await supabase.from("ical_tokens").delete().eq("user_id", user.id);
+    const { error } = await supabase.from("ical_tokens").insert({ user_id: user.id, token: newToken });
+    setBusy(false);
     if (error) return toast.error(error.message);
-    toast.success("Saved.");
+    setToken(newToken);
+    toast.success("Nieuwe iCal-link gegenereerd");
   };
 
-  const inputCls =
-    "mt-2 w-full bg-background border border-border px-3 py-2 focus:border-primary focus:outline-none text-sm";
+  const revoke = async () => {
+    if (!user || !confirm("iCal-link intrekken?")) return;
+    await supabase.from("ical_tokens").delete().eq("user_id", user.id);
+    setToken(null);
+    toast.success("Ingetrokken");
+  };
+
+  const url = token ? `${SUPABASE_URL}/functions/v1/ical-feed?token=${token}` : "";
+
+  const copy = () => {
+    navigator.clipboard.writeText(url);
+    toast.success("Gekopieerd");
+  };
 
   return (
     <div className="space-y-6 max-w-2xl">
       <header>
         <div className="text-[11px] uppercase tracking-[0.3em] text-primary">/ Settings</div>
-        <h1 className="display-font text-2xl md:text-3xl uppercase mt-2">Site controls</h1>
+        <h1 className="display-font text-2xl md:text-3xl uppercase mt-2">Instellingen</h1>
       </header>
 
-      <div className="bg-card border border-border p-6 space-y-5">
-        <div className="flex items-center justify-between">
-          <div>
-            <div className="text-sm font-medium">Waitlist open</div>
-            <div className="text-xs text-muted-foreground">When closed, the public waitlist form is replaced with a message.</div>
-          </div>
-          <button
-            onClick={() => setOpen(!open)}
-            className={`px-4 py-2 text-xs uppercase tracking-widest border ${open ? "border-primary text-primary bg-primary/10" : "border-border text-muted-foreground"}`}
-          >
-            {open ? "Open" : "Closed"}
+      <div className="bg-card border border-border p-6 space-y-4">
+        <div>
+          <h2 className="display-font text-xl uppercase">iCal kalender feed</h2>
+          <p className="text-xs text-muted-foreground mt-2">
+            Abonneer je agenda (Google, Apple, Outlook) op deze link om al je bevestigde trainingen automatisch te zien.
+            De link bevat een persoonlijk token — deel hem niet.
+          </p>
+        </div>
+
+        {token ? (
+          <>
+            <div className="bg-background border border-border p-3 text-xs font-mono break-all">{url}</div>
+            <div className="flex gap-2 flex-wrap">
+              <button onClick={copy} className="bg-primary text-primary-foreground px-4 py-2 text-xs uppercase tracking-widest font-semibold hover:bg-primary/90">
+                Kopieer link
+              </button>
+              <button onClick={generate} disabled={busy} className="border border-border px-4 py-2 text-xs uppercase tracking-widest hover:border-foreground/40">
+                Nieuwe link
+              </button>
+              <button onClick={revoke} className="border border-destructive/40 text-destructive px-4 py-2 text-xs uppercase tracking-widest hover:bg-destructive/10">
+                Intrekken
+              </button>
+            </div>
+          </>
+        ) : (
+          <button onClick={generate} disabled={busy} className="bg-primary text-primary-foreground px-4 py-2 text-xs uppercase tracking-widest font-semibold hover:bg-primary/90">
+            {busy ? "Bezig…" : "Genereer iCal-link"}
           </button>
-        </div>
-
-        <div>
-          <label className="text-[10px] uppercase tracking-[0.25em] text-muted-foreground">Closed message</label>
-          <textarea
-            rows={3}
-            value={closedMsg}
-            onChange={(e) => setClosedMsg(e.target.value)}
-            className="mt-2 w-full bg-background border border-border px-3 py-2 focus:border-primary focus:outline-none"
-          />
-        </div>
+        )}
       </div>
-
-      <div className="bg-card border border-border p-6 space-y-5">
-        <div>
-          <div className="text-sm font-medium">Calendly booking links</div>
-          <div className="text-xs text-muted-foreground">
-            Optional. Per training type. Parents see a "Book via Calendly" button matching their player's training type.
-          </div>
-        </div>
-
-        <div className="grid sm:grid-cols-2 gap-4">
-          <div>
-            <label className="text-[10px] uppercase tracking-[0.25em] text-muted-foreground">1-on-1 URL</label>
-            <input value={cal1} onChange={(e) => setCal1(e.target.value)} placeholder="https://calendly.com/..." className={inputCls} />
-          </div>
-          <div>
-            <label className="text-[10px] uppercase tracking-[0.25em] text-muted-foreground">Duo URL</label>
-            <input value={calDuo} onChange={(e) => setCalDuo(e.target.value)} placeholder="https://calendly.com/..." className={inputCls} />
-          </div>
-          <div>
-            <label className="text-[10px] uppercase tracking-[0.25em] text-muted-foreground">Group URL</label>
-            <input value={calGroup} onChange={(e) => setCalGroup(e.target.value)} placeholder="https://calendly.com/..." className={inputCls} />
-          </div>
-          <div>
-            <label className="text-[10px] uppercase tracking-[0.25em] text-muted-foreground">Trial URL</label>
-            <input value={calTrial} onChange={(e) => setCalTrial(e.target.value)} placeholder="https://calendly.com/..." className={inputCls} />
-          </div>
-        </div>
-
-      </div>
-
-      <button
-        onClick={save}
-        disabled={saving}
-        className="bg-primary text-primary-foreground px-6 py-3 text-xs uppercase tracking-widest font-semibold hover:bg-primary/90 disabled:opacity-50"
-      >
-        {saving ? "Saving…" : "Save settings"}
-      </button>
     </div>
   );
 };

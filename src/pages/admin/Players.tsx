@@ -2,7 +2,13 @@ import { useEffect, useState } from "react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 
-type Profile = { id: string; full_name: string | null; phone: string | null; status: "pending" | "active" | "inactive" };
+type Profile = {
+  id: string;
+  full_name: string | null;
+  phone: string | null;
+  status: "pending" | "active" | "inactive";
+  sticky_note: string | null;
+};
 type Player = {
   id: string;
   parent_profile_id: string;
@@ -33,31 +39,43 @@ const Players = () => {
   const [editing, setEditing] = useState<Player | null>(null);
   const [creating, setCreating] = useState(false);
   const [form, setForm] = useState(empty);
+  const [stickyDraft, setStickyDraft] = useState<Record<string, string>>({});
+  const [stickyOpen, setStickyOpen] = useState<string | null>(null);
 
-  useEffect(() => {
-    void load();
-  }, []);
+  useEffect(() => { void load(); }, []);
 
   const load = async () => {
     const [{ data: p }, { data: pr }] = await Promise.all([
       supabase.from("players").select("*").order("player_name"),
-      supabase.from("profiles").select("id, full_name, phone, status"),
+      supabase.from("profiles").select("id, full_name, phone, status, sticky_note"),
     ]);
     setPlayers((p ?? []) as Player[]);
     setProfiles((pr ?? []) as Profile[]);
+    const d: Record<string, string> = {};
+    (pr ?? []).forEach((x: any) => { d[x.id] = x.sticky_note ?? ""; });
+    setStickyDraft(d);
   };
 
+  const profileFor = (id: string) => profiles.find((x) => x.id === id);
   const parentLabel = (id: string) => {
-    const p = profiles.find((x) => x.id === id);
+    const p = profileFor(id);
     return p ? `${p.full_name ?? "—"}${p.phone ? ` · ${p.phone}` : ""}` : id.slice(0, 8);
   };
 
-  const startCreate = () => {
-    setEditing(null);
-    setForm(empty);
-    setCreating(true);
+  const saveSticky = async (profileId: string) => {
+    const val = (stickyDraft[profileId] ?? "").slice(0, 100);
+    if (val.length > 100) {
+      toast.error("Sticky note max 100 tekens");
+      return;
+    }
+    const { error } = await supabase.from("profiles").update({ sticky_note: val || null }).eq("id", profileId);
+    if (error) return toast.error(error.message);
+    toast.success("Notitie opgeslagen");
+    setStickyOpen(null);
+    void load();
   };
 
+  const startCreate = () => { setEditing(null); setForm(empty); setCreating(true); };
   const startEdit = (p: Player) => {
     setEditing(p);
     setForm({
@@ -92,7 +110,6 @@ const Players = () => {
       ? await supabase.from("players").update(payload).eq("id", editing.id)
       : await supabase.from("players").insert(payload);
     if (error) return toast.error(error.message);
-    // make sure parent profile is active when a player is linked
     await supabase.from("profiles").update({ status: "active" }).eq("id", form.parent_profile_id);
     toast.success("Opgeslagen");
     setCreating(false);
@@ -120,35 +137,61 @@ const Players = () => {
           <h1 className="display-font text-2xl md:text-3xl uppercase mt-2">Spelers</h1>
         </div>
         <div className="flex gap-2">
-          <input
-            placeholder="Zoek..."
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            className="bg-background border border-border px-3 py-2 text-sm"
-          />
-          <button onClick={startCreate} className="bg-primary text-primary-foreground px-4 py-2 text-xs uppercase tracking-widest font-semibold hover:bg-primary/90 whitespace-nowrap">
-            + Speler
-          </button>
+          <input placeholder="Zoek..." value={search} onChange={(e) => setSearch(e.target.value)} className="bg-background border border-border px-3 py-2 text-sm" />
+          <button onClick={startCreate} className="bg-primary text-primary-foreground px-4 py-2 text-xs uppercase tracking-widest font-semibold hover:bg-primary/90 whitespace-nowrap">+ Speler</button>
         </div>
       </header>
 
       <div className="border border-border bg-card divide-y divide-border">
         {filtered.length === 0 && <div className="p-6 text-sm text-muted-foreground">Geen spelers.</div>}
-        {filtered.map((p) => (
-          <div key={p.id} className="p-4 flex items-center justify-between gap-3">
-            <div className="min-w-0">
-              <div className="font-medium">{p.player_name} {p.birth_year && <span className="text-xs text-muted-foreground">({p.birth_year})</span>}</div>
-              <div className="text-xs text-muted-foreground truncate">
-                Ouder: {parentLabel(p.parent_profile_id)}{p.club ? ` · ${p.club}` : ""}{p.team ? ` · ${p.team}` : ""}{p.position ? ` · ${p.position}` : ""}
+        {filtered.map((p) => {
+          const prof = profileFor(p.parent_profile_id);
+          const sticky = prof?.sticky_note;
+          const draft = stickyDraft[p.parent_profile_id] ?? "";
+          const open = stickyOpen === p.parent_profile_id;
+          return (
+            <div key={p.id} className="p-4 space-y-2">
+              <div className="flex items-center justify-between gap-3">
+                <div className="min-w-0">
+                  <div className="font-medium">{p.player_name} {p.birth_year && <span className="text-xs text-muted-foreground">({p.birth_year})</span>}</div>
+                  <div className="text-xs text-muted-foreground truncate">
+                    Ouder: {parentLabel(p.parent_profile_id)}{p.club ? ` · ${p.club}` : ""}{p.team ? ` · ${p.team}` : ""}{p.position ? ` · ${p.position}` : ""}
+                  </div>
+                </div>
+                <div className="flex gap-2 shrink-0 items-center">
+                  <span className={`text-[10px] uppercase tracking-widest px-2 py-1 border ${p.status === "active" ? "border-primary text-primary" : "border-border text-muted-foreground"}`}>{p.status}</span>
+                  <button onClick={() => setStickyOpen(open ? null : p.parent_profile_id)} className="text-[10px] uppercase tracking-widest border border-border px-3 py-1.5 hover:border-foreground/40">
+                    📝 {sticky ? "Edit" : "Note"}
+                  </button>
+                  <button onClick={() => startEdit(p)} className="text-[10px] uppercase tracking-widest border border-border px-3 py-1.5 hover:border-foreground/40">Edit</button>
+                  <button onClick={() => remove(p)} className="text-[10px] uppercase tracking-widest border border-destructive/40 text-destructive px-3 py-1.5 hover:bg-destructive/10">Del</button>
+                </div>
               </div>
+              {sticky && !open && (
+                <div className="text-xs bg-yellow-500/10 border border-yellow-500/30 px-3 py-2 italic">📌 {sticky}</div>
+              )}
+              {open && (
+                <div className="space-y-2 border border-border bg-background p-3">
+                  <textarea
+                    rows={2}
+                    maxLength={100}
+                    value={draft}
+                    onChange={(e) => setStickyDraft({ ...stickyDraft, [p.parent_profile_id]: e.target.value.slice(0, 100) })}
+                    placeholder="Sticky note (max 100 tekens, alleen voor admin)"
+                    className="w-full bg-background border border-border px-3 py-2 text-sm focus:border-primary focus:outline-none"
+                  />
+                  <div className="flex items-center justify-between text-[10px] uppercase tracking-widest">
+                    <span className={draft.length > 100 ? "text-destructive" : "text-muted-foreground"}>{draft.length}/100</span>
+                    <div className="flex gap-2">
+                      <button onClick={() => setStickyOpen(null)} className="border border-border px-3 py-1.5 hover:border-foreground/40">Annuleer</button>
+                      <button onClick={() => saveSticky(p.parent_profile_id)} className="bg-primary text-primary-foreground px-3 py-1.5 font-semibold hover:bg-primary/90">Opslaan</button>
+                    </div>
+                  </div>
+                </div>
+              )}
             </div>
-            <div className="flex gap-2 shrink-0">
-              <span className={`text-[10px] uppercase tracking-widest px-2 py-1 border ${p.status === "active" ? "border-primary text-primary" : "border-border text-muted-foreground"}`}>{p.status}</span>
-              <button onClick={() => startEdit(p)} className="text-[10px] uppercase tracking-widest border border-border px-3 py-1.5 hover:border-foreground/40">Edit</button>
-              <button onClick={() => remove(p)} className="text-[10px] uppercase tracking-widest border border-destructive/40 text-destructive px-3 py-1.5 hover:bg-destructive/10">Del</button>
-            </div>
-          </div>
-        ))}
+          );
+        })}
       </div>
 
       {creating && (
@@ -181,12 +224,10 @@ const Players = () => {
                   <option value="inactive">Inactive</option>
                 </select>
               </I>
-              <I label="Notities" full><textarea rows={2} value={form.notes} onChange={(e) => setForm({ ...form, notes: e.target.value })} className={cls} /></I>
+              <I label="Notities (intern)" full><textarea rows={2} value={form.notes} onChange={(e) => setForm({ ...form, notes: e.target.value })} className={cls} /></I>
             </div>
 
-            <button onClick={save} className="w-full bg-primary text-primary-foreground py-3 text-xs uppercase tracking-widest font-semibold hover:bg-primary/90">
-              Opslaan
-            </button>
+            <button onClick={save} className="w-full bg-primary text-primary-foreground py-3 text-xs uppercase tracking-widest font-semibold hover:bg-primary/90">Opslaan</button>
           </div>
         </div>
       )}

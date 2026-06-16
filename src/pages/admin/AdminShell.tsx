@@ -5,8 +5,10 @@ import { supabase } from "@/integrations/supabase/client";
 
 const links = [
   { to: "/admin", end: true, label: "Calendar" },
+  { to: "/admin/bookings", label: "Bookings" },
   { to: "/admin/applications", label: "Applications" },
   { to: "/admin/players", label: "Players" },
+  { to: "/admin/development", label: "Development" },
   { to: "/admin/feedback", label: "Feedback" },
   { to: "/admin/settings", label: "Settings" },
 ];
