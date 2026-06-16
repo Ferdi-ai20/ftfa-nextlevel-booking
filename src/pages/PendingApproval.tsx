@@ -63,7 +63,7 @@ const PendingApproval = () => {
                 Hi{name ? ` ${name}` : ""}, je account is aangemaakt maar nog niet goedgekeurd door Ferdi.
               </p>
               <p className="text-sm text-muted-foreground">
-                Zodra je profiel op <strong className="text-foreground">active</strong> staat, krijg je toegang tot je dashboard en kun je private trainingen boeken. Je ontvangt hierover bericht per e-mail.
+                Zodra Ferdi je profiel heeft goedgekeurd, krijg je toegang tot je dashboard en kun je trainingen boeken. Je ontvangt hierover bericht per e-mail.
               </p>
               <p className="text-sm text-muted-foreground">
                 Vragen? Neem contact op met Ferdi via WhatsApp:{" "}
