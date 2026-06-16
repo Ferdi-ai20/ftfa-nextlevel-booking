@@ -23,21 +23,15 @@ type Slot = {
   visibility: SlotVisibility;
   status: SlotStatus;
   max_players: number;
-  price_per_player: number | null;
   location: string | null;
   admin_note: string | null;
   player_note: string | null;
-  auto_public_enabled: boolean;
-  auto_public_hours_before: number;
-  auto_public_min_bookings_threshold: number;
 };
 
 type Booking = {
   id: string;
   slot_id: string;
   status: BookingStatus;
-  payment_status: string;
-  payment_method: string | null;
   guest_name: string | null;
   guest_email: string | null;
   guest_phone: string | null;
@@ -69,10 +63,8 @@ const visibilityColors: Record<SlotVisibility, string> = {
 };
 const statusBadge: Record<SlotStatus, string> = {
   open: "bg-card border-border",
-  reserved: "bg-amber-500/10 border-amber-500/30",
-  booked: "bg-destructive/10 border-destructive/30",
+  full: "bg-destructive/10 border-destructive/30",
   cancelled: "bg-muted/40 border-border line-through",
-  expired: "bg-muted/40 border-border opacity-60",
 };
 
 const emptyForm = {
@@ -86,9 +78,6 @@ const emptyForm = {
   location: "",
   admin_note: "",
   player_note: "",
-  auto_public_enabled: false,
-  auto_public_hours_before: 24,
-  auto_public_min_bookings_threshold: 1,
 };
 
 const Calendar = () => {
@@ -119,7 +108,7 @@ const Calendar = () => {
   const load = async () => {
     const { data: s, error } = await supabase
       .from("training_slots")
-      .select("*")
+      .select("id, date, start_time, end_time, training_type, visibility, status, max_players, location, admin_note, player_note")
       .gte("date", isoDay(range.from))
       .lt("date", isoDay(range.to))
       .order("date")
@@ -131,7 +120,7 @@ const Calendar = () => {
     setSlots((s ?? []) as Slot[]);
     if (s && s.length) {
       const ids = s.map((x) => x.id);
-      const { data: b } = await supabase.from("bookings").select("*").in("slot_id", ids);
+      const { data: b } = await supabase.from("bookings").select("id, slot_id, status, guest_name, guest_email, guest_phone, profile_id, player_id").in("slot_id", ids);
       setBookings((b ?? []) as Booking[]);
     } else {
       setBookings([]);
@@ -146,9 +135,15 @@ const Calendar = () => {
     setForm({ ...emptyForm, date });
     setCreating({ date });
   };
-  const openEdit = (s: Slot) => {
+  const openEdit = async (s: Slot) => {
     setCreating(null);
     setEditing(s);
+    // Admin-only: fetch price via secure function
+    let price = "";
+    try {
+      const { data } = await supabase.rpc("get_slot_price", { _slot_id: s.id });
+      if (data != null) price = String(data);
+    } catch { /* ignore */ }
     setForm({
       date: s.date,
       start_time: s.start_time.slice(0, 5),
@@ -156,13 +151,10 @@ const Calendar = () => {
       training_type: s.training_type,
       visibility: s.visibility,
       max_players: s.max_players,
-      price_per_player: s.price_per_player?.toString() ?? "",
+      price_per_player: price,
       location: s.location ?? "",
       admin_note: s.admin_note ?? "",
       player_note: s.player_note ?? "",
-      auto_public_enabled: s.auto_public_enabled,
-      auto_public_hours_before: s.auto_public_hours_before,
-      auto_public_min_bookings_threshold: s.auto_public_min_bookings_threshold,
     });
   };
 
@@ -178,21 +170,24 @@ const Calendar = () => {
       training_type: form.training_type,
       visibility: form.visibility,
       max_players: form.max_players,
-      price_per_player: form.price_per_player ? Number(form.price_per_player) : null,
       location: form.location || null,
       admin_note: form.admin_note || null,
       player_note: form.player_note || null,
-      auto_public_enabled: form.auto_public_enabled,
-      auto_public_hours_before: form.auto_public_hours_before,
-      auto_public_min_bookings_threshold: form.auto_public_min_bookings_threshold,
     };
+    const priceVal = form.price_per_player ? Number(form.price_per_player) : null;
     if (editing) {
       const { error } = await supabase.from("training_slots").update(payload).eq("id", editing.id);
       if (error) return toast.error(error.message);
+      if (priceVal !== null) {
+        await supabase.rpc("admin_set_slot_price", { _slot_id: editing.id, _price: priceVal });
+      }
       toast.success("Slot bijgewerkt");
     } else {
-      const { error } = await supabase.from("training_slots").insert(payload);
+      const { data, error } = await supabase.from("training_slots").insert(payload).select("id").single();
       if (error) return toast.error(error.message);
+      if (data?.id && priceVal !== null) {
+        await supabase.rpc("admin_set_slot_price", { _slot_id: data.id, _price: priceVal });
+      }
       toast.success("Slot aangemaakt");
     }
     setCreating(null);
@@ -216,7 +211,7 @@ const Calendar = () => {
 
   const cancelBooking = async (b: Booking) => {
     if (!confirm("Boeking annuleren?")) return;
-    const { error } = await supabase.from("bookings").update({ status: "cancelled_by_admin" }).eq("id", b.id);
+    const { error } = await supabase.from("bookings").update({ status: "cancelled", cancelled_by: "admin" }).eq("id", b.id);
     if (error) return toast.error(error.message);
     const s = slots.find((x) => x.id === b.slot_id);
     const email = b.guest_email ?? (await getProfileEmail(b.profile_id));
@@ -248,15 +243,7 @@ const Calendar = () => {
     void load();
   };
 
-  const setPayment = async (b: Booking, payment_status: string, payment_method: string | null) => {
-    const { error } = await supabase.from("bookings").update({ payment_status, payment_method } as any).eq("id", b.id);
-    if (error) return toast.error(error.message);
-    void load();
-  };
-
   const getProfileEmail = async (_profileId: string | null) => {
-    // Registered users' emails live in auth.users which isn't readable client-side.
-    // For registered bookings the email is sent via realtime triggers in their dashboard flows.
     return null;
   };
 
@@ -336,7 +323,7 @@ const Calendar = () => {
           onVisibility={(v) => setVisibility(editing, v)}
           onCancelBooking={cancelBooking}
           onAcceptBooking={acceptBooking}
-          onSetPayment={setPayment}
+          
           form={form}
           setForm={setForm}
         />
@@ -499,7 +486,7 @@ const SlotDrawer = ({
   onVisibility,
   onCancelBooking,
   onAcceptBooking,
-  onSetPayment,
+  
   form,
   setForm,
   isNew = false,
@@ -512,7 +499,7 @@ const SlotDrawer = ({
   onVisibility?: (v: SlotVisibility) => void;
   onCancelBooking?: (b: Booking) => void;
   onAcceptBooking?: (b: Booking) => void;
-  onSetPayment?: (b: Booking, status: string, method: string | null) => void;
+  
   form: typeof emptyForm;
   setForm: (f: typeof emptyForm) => void;
   isNew?: boolean;
@@ -551,22 +538,6 @@ const SlotDrawer = ({
         <L label="Notitie (zichtbaar voor speler)" full><textarea rows={2} value={form.player_note} onChange={(e) => setForm({ ...form, player_note: e.target.value })} className={inputCls} /></L>
       </div>
 
-      <div className="border border-border p-3 space-y-3">
-        <label className="flex items-center gap-2 text-sm">
-          <input type="checkbox" checked={form.auto_public_enabled} onChange={(e) => setForm({ ...form, auto_public_enabled: e.target.checked })} />
-          Auto-public maken als slot bijna leeg is
-        </label>
-        {form.auto_public_enabled && (
-          <div className="grid sm:grid-cols-2 gap-3">
-            <L label="Uren vóór start">
-              <input type="number" min={1} max={168} value={form.auto_public_hours_before} onChange={(e) => setForm({ ...form, auto_public_hours_before: Number(e.target.value) })} className={inputCls} />
-            </L>
-            <L label="Public als boekingen <">
-              <input type="number" min={0} value={form.auto_public_min_bookings_threshold} onChange={(e) => setForm({ ...form, auto_public_min_bookings_threshold: Number(e.target.value) })} className={inputCls} />
-            </L>
-          </div>
-        )}
-      </div>
 
       {!isNew && slot && (
         <>
@@ -589,27 +560,11 @@ const SlotDrawer = ({
                       <div className="text-muted-foreground">{b.guest_email ?? ""} · {b.status}</div>
                     </div>
                     <div className="flex gap-1 shrink-0">
-                      {b.status === "pending_review" && (
-                        <button onClick={() => onAcceptBooking?.(b)} className="text-[9px] uppercase border border-primary text-primary px-2 py-1 hover:bg-primary/10">Accept</button>
+                      {b.status === "confirmed" && (
+                        <button onClick={() => onCancelBooking?.(b)} className="text-[9px] uppercase border border-destructive/40 text-destructive px-2 py-1 hover:bg-destructive/10">Cancel</button>
                       )}
-                      <button onClick={() => onCancelBooking?.(b)} className="text-[9px] uppercase border border-destructive/40 text-destructive px-2 py-1 hover:bg-destructive/10">Cancel</button>
                     </div>
                   </div>
-                  {onSetPayment && (
-                    <div className="flex flex-wrap gap-1 items-center pt-1 border-t border-border/60">
-                      <span className="text-[9px] uppercase tracking-widest text-muted-foreground">Betaling:</span>
-                      {(["not_required","unpaid","paid","refunded"] as const).map((ps) => (
-                        <button key={ps} onClick={() => onSetPayment(b, ps, b.payment_method)} className={`text-[9px] uppercase px-2 py-1 border ${b.payment_status === ps ? "border-primary text-primary bg-primary/10" : "border-border text-muted-foreground"}`}>{ps}</button>
-                      ))}
-                      <select value={b.payment_method ?? ""} onChange={(e) => onSetPayment(b, b.payment_status, e.target.value || null)} className="text-[10px] bg-background border border-border px-1.5 py-1 ml-auto">
-                        <option value="">methode</option>
-                        <option value="cash">cash</option>
-                        <option value="bank_transfer">overschrijving</option>
-                        <option value="tikkie">tikkie</option>
-                        <option value="online">online</option>
-                      </select>
-                    </div>
-                  )}
                 </div>
               ))}
             </div>

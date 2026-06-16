@@ -126,7 +126,8 @@ const GuestBookingModal = ({ slot, onClose }: { slot: Slot; onClose: () => void 
     const d = parsed.data as any;
     const { error } = await supabase.from("bookings").insert({
       slot_id: slot.id,
-      status: "pending_review",
+      status: "confirmed",
+      guest_parent_name: d.guest_name,
       guest_name: `${d.guest_name} (ouder van ${d.player_name})`,
       guest_email: d.guest_email,
       guest_phone: d.guest_phone,
@@ -136,11 +137,11 @@ const GuestBookingModal = ({ slot, onClose }: { slot: Slot; onClose: () => void 
       guest_position: d.guest_position || null,
       guest_goal: d.guest_goal || null,
       guest_notes: d.guest_notes || null,
-    });
+    } as any);
     setBusy(false);
     if (error) return toast.error(error.message);
-    toast.success("Aanvraag verzonden! Ferdi neemt contact op.");
-    void notify("booking-pending-review", d.guest_email, {
+    toast.success("Boeking bevestigd! Je ontvangt een bevestigingsmail.");
+    void notify("booking-confirmation", d.guest_email, {
       guestName: d.guest_name,
       date: fmtDate(slot.date),
       slotTime: fmtTime(slot.start_time),
@@ -149,7 +150,6 @@ const GuestBookingModal = ({ slot, onClose }: { slot: Slot; onClose: () => void 
       who: `${d.guest_name} (ouder van ${d.player_name})`,
       date: fmtDate(slot.date),
       slotTime: fmtTime(slot.start_time),
-      needsReview: true,
       contact: `${d.guest_email} · ${d.guest_phone}`,
     });
     onClose();
