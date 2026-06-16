@@ -16,13 +16,13 @@ import { template as bookingConfirmedPrivate } from './booking-confirmed-private
 import { template as bookingCancelled } from './booking-cancelled.tsx'
 import { template as adminNewBooking } from './admin-new-booking.tsx'
 import { template as applicationDecision } from './application-decision.tsx'
+import { template as adminApplicationApproved } from './admin-application-approved.tsx'
 
 export const TEMPLATES: Record<string, TemplateEntry> = {
   'booking-confirmation': bookingConfirmation,
   'booking-confirmed-private': bookingConfirmedPrivate,
-  
-  
   'booking-cancelled': bookingCancelled,
   'admin-new-booking': adminNewBooking,
   'application-decision': applicationDecision,
+  'admin-application-approved': adminApplicationApproved,
 }

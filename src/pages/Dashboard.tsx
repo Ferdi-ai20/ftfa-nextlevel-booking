@@ -14,6 +14,14 @@ import {
   ACTIVE_BOOKING_STATUSES,
   BookingStatus,
 } from "@/lib/slots";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 
 type Slot = {
   id: string;
@@ -24,7 +32,6 @@ type Slot = {
   visibility: SlotVisibility;
   status: string;
   max_players: number;
-  price_per_player: number | null;
   location: string | null;
   player_note: string | null;
 };
@@ -37,71 +44,114 @@ type Booking = {
   player_id: string | null;
 };
 
-type Player = { id: string; player_name: string };
-type FB = { id: string; player_id: string; strengths: string | null; development_points: string | null; feedback_text: string | null; created_at: string };
+type Player = {
+  id: string;
+  player_name: string;
+  birth_year: number | null;
+  club: string | null;
+  team: string | null;
+  position: string | null;
+};
+
+type Goal = { id: string; description: string; status: string; created_at: string };
+type Homework = { id: string; title: string; description: string | null; video_url: string | null; due_date: string | null; status: string };
+type CoachNote = { id: string; note: string; created_at: string };
+
+const TABS = [
+  { id: "available", label: "Beschikbare trainingen" },
+  { id: "bookings", label: "Mijn boekingen" },
+  { id: "development", label: "Mijn ontwikkeling" },
+  { id: "profile", label: "Profiel" },
+] as const;
+type TabId = typeof TABS[number]["id"];
 
 const Dashboard = () => {
   const { session, isAdmin, loading, signOut } = useAuth();
   const navigate = useNavigate();
+  const [tab, setTab] = useState<TabId>("available");
+
   const [slots, setSlots] = useState<Slot[]>([]);
   const [bookings, setBookings] = useState<Booking[]>([]);
   const [players, setPlayers] = useState<Player[]>([]);
-  const [feedback, setFeedback] = useState<FB[]>([]);
+  const [goals, setGoals] = useState<Goal[]>([]);
+  const [homework, setHomework] = useState<Homework[]>([]);
+  const [coachNotes, setCoachNotes] = useState<CoachNote[]>([]);
   const [profileName, setProfileName] = useState("");
+  const [profilePhone, setProfilePhone] = useState("");
   const [profileStatus, setProfileStatus] = useState<string>("pending");
   const [filter, setFilter] = useState<"all" | TrainingType>("all");
   const [busy, setBusy] = useState<string | null>(null);
+  const [cancelTarget, setCancelTarget] = useState<{ b: Booking; s: Slot } | null>(null);
 
   useEffect(() => {
-    if (!loading && !session) navigate("/auth?redirect=/dashboard", { replace: true });
-    if (!loading && session && isAdmin) navigate("/admin", { replace: true });
+    if (loading) return;
+    if (!session) { navigate("/auth?redirect=/dashboard", { replace: true }); return; }
+    if (isAdmin) { navigate("/admin", { replace: true }); return; }
   }, [session, isAdmin, loading, navigate]);
 
   useEffect(() => {
-    if (!session) return;
+    if (!session || isAdmin) return;
     void loadAll();
-  }, [session]);
+  }, [session, isAdmin]);
+
+  // Redirect to pending screen if not active
+  useEffect(() => {
+    if (!loading && session && !isAdmin && profileStatus && profileStatus !== "active") {
+      navigate("/wachten", { replace: true });
+    }
+  }, [profileStatus, session, isAdmin, loading, navigate]);
 
   const loadAll = async () => {
     const today = new Date().toISOString().slice(0, 10);
-    const [{ data: prof }, { data: ps }, { data: sl }, { data: bk }] = await Promise.all([
-      supabase.from("profiles").select("full_name, status").eq("id", session!.user.id).maybeSingle(),
-      supabase.from("players").select("id, player_name").eq("parent_profile_id", session!.user.id),
-      supabase.from("training_slots").select("*").gte("date", today).in("visibility", ["private", "public"]).eq("status", "open").order("date").order("start_time"),
-      supabase.from("bookings").select("id, slot_id, status, profile_id, player_id").eq("profile_id", session!.user.id),
+    const uid = session!.user.id;
+    const [{ data: prof }, { data: ps }, { data: sl }, { data: bk }, { data: gl }, { data: hw }, { data: cn }] = await Promise.all([
+      supabase.from("profiles").select("full_name, phone, status").eq("id", uid).maybeSingle(),
+      supabase.from("players").select("id, player_name, birth_year, club, team, position").eq("parent_profile_id", uid),
+      supabase.from("training_slots").select("id, date, start_time, end_time, training_type, visibility, status, max_players, location, player_note")
+        .gte("date", today).eq("visibility", "private").eq("status", "open").order("date").order("start_time"),
+      supabase.from("bookings").select("id, slot_id, status, profile_id, player_id").eq("profile_id", uid),
+      supabase.from("player_goals").select("id, description, status, created_at").eq("profile_id", uid).order("created_at", { ascending: false }),
+      supabase.from("player_homework").select("id, title, description, video_url, due_date, status").eq("profile_id", uid).order("assigned_at", { ascending: false }),
+      supabase.from("player_coach_notes").select("id, note, created_at").eq("profile_id", uid).order("created_at", { ascending: false }),
     ]);
     setProfileName(prof?.full_name ?? "");
+    setProfilePhone(prof?.phone ?? "");
     setProfileStatus(prof?.status ?? "pending");
     setPlayers((ps ?? []) as Player[]);
     setSlots((sl ?? []) as Slot[]);
     setBookings((bk ?? []) as Booking[]);
-    const playerIds = (ps ?? []).map((p) => p.id);
-    if (playerIds.length) {
-      const { data: fb } = await supabase.from("feedback").select("*").in("player_id", playerIds).eq("visible_to_player", true).order("created_at", { ascending: false });
-      setFeedback((fb ?? []) as FB[]);
-    } else {
-      setFeedback([]);
-    }
+    setGoals((gl ?? []) as Goal[]);
+    setHomework((hw ?? []) as Homework[]);
+    setCoachNotes((cn ?? []) as CoachNote[]);
   };
 
-  const slotCount = (slotId: string) =>
-    // we only fetched own bookings — for capacity we trust DB enforcement; show own status
-    bookings.filter((b) => b.slot_id === slotId && ACTIVE_BOOKING_STATUSES.includes(b.status)).length;
-
-  const book = async (s: Slot, playerId?: string) => {
-    if (profileStatus !== "active" && s.visibility === "private") {
+  const book = async (s: Slot) => {
+    if (profileStatus !== "active") {
       toast.error("Je profiel moet eerst goedgekeurd worden door Ferdi.");
+      return;
+    }
+    if (hoursUntil(s.date, s.start_time) < 24) {
+      toast.error("Online boeken is gesloten binnen 24 uur voor aanvang.");
       return;
     }
     setBusy(s.id);
     const { error } = await supabase.from("bookings").insert({
       slot_id: s.id,
       profile_id: session!.user.id,
-      player_id: playerId ?? players[0]?.id ?? null,
+      player_id: players[0]?.id ?? null,
       status: "confirmed",
     });
     setBusy(null);
-    if (error) return toast.error(error.message);
+    if (error) {
+      const msg = error.message.includes("24 hours") ? "Online boeken is gesloten binnen 24 uur voor aanvang."
+        : error.message.includes("already have a booking") ? "Je hebt deze training al geboekt."
+        : error.message.includes("same day") || error.message.includes("session booked on this day") ? "Je hebt al een training op deze dag."
+        : error.message.includes("overlap") ? "Je hebt al een boeking die overlapt met deze tijd."
+        : error.message.includes("full") ? "Deze training zit vol."
+        : error.message;
+      toast.error(msg);
+      return;
+    }
     toast.success("Geboekt!");
     void notify("booking-confirmed-private", session!.user.email, {
       playerName: profileName,
@@ -116,42 +166,63 @@ const Dashboard = () => {
       slotTime: fmtTime(s.start_time),
       trainingType: trainingTypeLabel(s.training_type),
       contact: session!.user.email,
+      source: "player",
     }, `admin-book-${s.id}-${session!.user.id}`);
     void loadAll();
   };
 
-  const cancel = async (b: Booking, s: Slot | undefined) => {
-    if (s && hoursUntil(s.date, s.start_time) < 24) {
-      toast.error("Binnen 24 uur kun je niet meer zelf annuleren. Neem contact op met Ferdi.");
+  const confirmCancel = async () => {
+    if (!cancelTarget) return;
+    const { b, s } = cancelTarget;
+    const { error } = await supabase.from("bookings").update({ status: "cancelled", cancelled_by: "player" }).eq("id", b.id);
+    setCancelTarget(null);
+    if (error) {
+      const msg = error.message.includes("48 hours") ? "Online annuleren is gesloten binnen 48 uur voor aanvang." : error.message;
+      toast.error(msg);
       return;
     }
-    if (!confirm("Boeking annuleren?")) return;
-    const { error } = await supabase.from("bookings").update({ status: "cancelled", cancelled_by: "player" }).eq("id", b.id);
-    if (error) return toast.error(error.message);
-    toast.success("Geannuleerd");
-    if (s) {
-      void notify("admin-new-booking", ADMIN_EMAIL, {
-        who: `${profileName || session!.user.email} (ANNULERING)`,
-        date: fmtDate(s.date),
-        slotTime: fmtTime(s.start_time),
-        contact: session!.user.email,
-      }, `admin-cancel-${b.id}`);
-    }
+    toast.success("Boeking geannuleerd.");
+    void notify("booking-cancelled", session!.user.email, {
+      playerName: profileName,
+      date: fmtDate(s.date),
+      slotTime: fmtTime(s.start_time),
+      trainingType: trainingTypeLabel(s.training_type),
+    }, `cancel-${b.id}`);
+    void notify("admin-new-booking", ADMIN_EMAIL, {
+      who: `${profileName || session!.user.email} (ANNULERING)`,
+      date: fmtDate(s.date),
+      slotTime: fmtTime(s.start_time),
+      trainingType: trainingTypeLabel(s.training_type),
+      contact: session!.user.email,
+      source: "player-cancel",
+    }, `admin-cancel-${b.id}`);
     void loadAll();
   };
 
-  const filteredSlots = useMemo(
-    () => slots.filter((s) => filter === "all" || s.training_type === filter),
-    [slots, filter],
-  );
+  const toggleHomework = async (h: Homework) => {
+    const next = h.status === "completed" ? "open" : "completed";
+    const { error } = await supabase.from("player_homework").update({ status: next }).eq("id", h.id);
+    if (error) return toast.error(error.message);
+    setHomework((arr) => arr.map((x) => x.id === h.id ? { ...x, status: next } : x));
+  };
 
-  const myActiveBookings = bookings.filter((b) => ACTIVE_BOOKING_STATUSES.includes(b.status));
-  const myUpcoming = myActiveBookings
-    .map((b) => ({ b, s: slots.find((x) => x.id === b.slot_id) }))
-    .filter((x) => x.s);
+  const filteredSlots = useMemo(() => {
+    const bookedIds = new Set(bookings.filter((b) => ACTIVE_BOOKING_STATUSES.includes(b.status)).map((b) => b.slot_id));
+    return slots
+      .filter((s) => !bookedIds.has(s.id))
+      .filter((s) => hoursUntil(s.date, s.start_time) >= 24)
+      .filter((s) => filter === "all" || s.training_type === filter);
+  }, [slots, bookings, filter]);
 
-  if (loading) return <div className="min-h-screen grid place-items-center bg-background text-foreground">Loading…</div>;
-  if (!session) return null;
+  const myUpcoming = useMemo(() => bookings
+    .filter((b) => ACTIVE_BOOKING_STATUSES.includes(b.status))
+    .map((b) => ({ b, s: slots.find((x) => x.id === b.slot_id) || null }))
+    .filter((x): x is { b: Booking; s: Slot } => !!x.s)
+    .sort((a, b) => (a.s.date + a.s.start_time).localeCompare(b.s.date + b.s.start_time)),
+    [bookings, slots]);
+
+  if (loading) return <div className="min-h-screen grid place-items-center bg-background text-foreground">Laden…</div>;
+  if (!session || isAdmin || profileStatus !== "active") return null;
 
   return (
     <main className="min-h-screen bg-background text-foreground">
@@ -159,118 +230,244 @@ const Dashboard = () => {
         <Link to="/" className="display-font text-xl uppercase">FTFA</Link>
         <div className="flex items-center gap-3">
           <div className="text-xs text-muted-foreground hidden sm:block">{profileName || session.user.email}</div>
-          <button onClick={signOut} className="text-[10px] uppercase tracking-widest border border-border px-3 py-1.5 hover:border-foreground/40">Sign out</button>
+          <button onClick={signOut} className="text-[10px] uppercase tracking-widest border border-border px-3 py-1.5 hover:border-foreground/40">Uitloggen</button>
         </div>
       </header>
 
+      <nav className="border-b border-border px-4 md:px-10 overflow-x-auto">
+        <div className="flex gap-1 max-w-5xl mx-auto">
+          {TABS.map((t) => (
+            <button
+              key={t.id}
+              onClick={() => setTab(t.id)}
+              className={`px-4 py-3 text-[11px] uppercase tracking-widest whitespace-nowrap border-b-2 transition-colors ${tab === t.id ? "border-primary text-foreground" : "border-transparent text-muted-foreground hover:text-foreground"}`}
+            >
+              {t.label}
+            </button>
+          ))}
+        </div>
+      </nav>
+
       <div className="max-w-5xl mx-auto p-4 md:p-10 space-y-10">
-        {profileStatus !== "active" && (
-          <div className="border border-primary/40 bg-primary/5 p-5">
-            <div className="text-xs uppercase tracking-widest text-primary mb-1">Profiel in afwachting</div>
-            <p className="text-sm text-muted-foreground">
-              Je account staat nog op <strong>{profileStatus}</strong>. Ferdi moet je eerst goedkeuren voordat je private trainingen kunt boeken. Public proeftrainingen zijn wel zichtbaar.
-            </p>
-          </div>
-        )}
-
-        {/* Mijn boekingen */}
-        <section>
-          <div className="text-[11px] uppercase tracking-[0.3em] text-primary">/ Mijn boekingen</div>
-          <h2 className="display-font text-3xl uppercase mt-2 mb-6">Aankomend</h2>
-          {myUpcoming.length === 0 ? (
-            <div className="border border-border bg-card p-6 text-sm text-muted-foreground">Nog geen aankomende trainingen.</div>
-          ) : (
-            <div className="space-y-2">
-              {myUpcoming.map(({ b, s }) => (
-                <div key={b.id} className="border border-border bg-card p-4 flex items-center justify-between gap-3">
-                  <div>
-                    <div className="display-font text-xl uppercase">{fmtDate(s!.date)}</div>
-                    <div className="text-xs uppercase tracking-widest text-muted-foreground mt-1">
-                      {fmtTime(s!.start_time)}–{fmtTime(s!.end_time)} · {trainingTypeLabel(s!.training_type)}{s!.location ? ` · ${s!.location}` : ""}
-                    </div>
-                    <div className="text-[10px] uppercase tracking-widest mt-1 text-primary">{b.status}</div>
-                  </div>
-                  <button onClick={() => cancel(b, s)} className="text-[10px] uppercase tracking-widest border border-destructive/40 text-destructive px-3 py-1.5 hover:bg-destructive/10">Annuleer</button>
-                </div>
-              ))}
+        {tab === "available" && (
+          <section>
+            <div className="flex items-end justify-between flex-wrap gap-3 mb-6">
+              <div>
+                <div className="text-[11px] uppercase tracking-[0.3em] text-primary">/ Beschikbaar</div>
+                <h2 className="display-font text-3xl uppercase mt-2">Boek een training</h2>
+                <p className="text-xs text-muted-foreground mt-2">Private trainingen, minimaal 24 uur vooraf te boeken.</p>
+              </div>
+              <select value={filter} onChange={(e) => setFilter(e.target.value as any)} className="bg-background border border-border px-3 py-2 text-sm">
+                <option value="all">Alle types</option>
+                <option value="one_on_one">1-op-1</option>
+                <option value="duo">Duo</option>
+                <option value="small_group">Small Group</option>
+              </select>
             </div>
-          )}
-        </section>
 
-        {/* Beschikbare trainingen */}
-        <section>
-          <div className="flex items-end justify-between flex-wrap gap-3 mb-6">
-            <div>
-              <div className="text-[11px] uppercase tracking-[0.3em] text-primary">/ Beschikbaar</div>
-              <h2 className="display-font text-3xl uppercase mt-2">Boek een training</h2>
-            </div>
-            <select value={filter} onChange={(e) => setFilter(e.target.value as any)} className="bg-background border border-border px-3 py-2 text-sm">
-              <option value="all">Alle types</option>
-              <option value="one_on_one">1-op-1</option>
-              <option value="duo">Duo</option>
-              <option value="small_group">Small Group</option>
-            </select>
-          </div>
-
-          {filteredSlots.length === 0 ? (
-            <div className="border border-border bg-card p-6 text-sm text-muted-foreground">Geen beschikbare trainingen.</div>
-          ) : (
-            <div className="grid sm:grid-cols-2 gap-3">
-              {filteredSlots.map((s) => {
-                const alreadyBooked = bookings.some((b) => b.slot_id === s.id && ACTIVE_BOOKING_STATUSES.includes(b.status));
-                return (
+            {filteredSlots.length === 0 ? (
+              <div className="border border-border bg-card p-6 text-sm text-muted-foreground">Geen beschikbare trainingen.</div>
+            ) : (
+              <div className="grid sm:grid-cols-2 gap-3">
+                {filteredSlots.map((s) => (
                   <div key={s.id} className="border border-border bg-card p-4">
-                    <div className="flex items-start justify-between gap-2">
-                      <div className="min-w-0">
-                        <div className="display-font text-lg uppercase">{fmtDate(s.date)}</div>
-                        <div className="font-mono text-sm mt-1">{fmtTime(s.start_time)} – {fmtTime(s.end_time)}</div>
-                      </div>
-                      <span className={`text-[10px] uppercase tracking-widest px-2 py-1 border ${s.visibility === "public" ? "border-emerald-500/50 text-emerald-400" : "border-primary/50 text-primary"}`}>
-                        {s.visibility}
-                      </span>
-                    </div>
+                    <div className="display-font text-lg uppercase">{fmtDate(s.date)}</div>
+                    <div className="font-mono text-sm mt-1">{fmtTime(s.start_time)} – {fmtTime(s.end_time)}</div>
                     <div className="text-xs uppercase tracking-widest text-muted-foreground mt-2">
-                      {trainingTypeLabel(s.training_type)}{s.location ? ` · ${s.location}` : ""}{s.price_per_player ? ` · €${s.price_per_player}` : ""}
+                      {trainingTypeLabel(s.training_type)}{s.location ? ` · ${s.location}` : ""}
                     </div>
                     {s.player_note && <div className="text-xs text-muted-foreground mt-2 italic">"{s.player_note}"</div>}
                     <div className="text-[10px] uppercase tracking-widest text-muted-foreground mt-2">
                       Max {s.max_players} {s.max_players === 1 ? "speler" : "spelers"}
                     </div>
                     <button
-                      disabled={alreadyBooked || busy === s.id || (profileStatus !== "active" && s.visibility === "private")}
+                      disabled={busy === s.id}
                       onClick={() => book(s)}
                       className="mt-3 w-full bg-primary text-primary-foreground px-3 py-2 text-xs uppercase tracking-widest font-semibold hover:bg-primary/90 disabled:opacity-40"
                     >
-                      {alreadyBooked ? "Al geboekt" : busy === s.id ? "..." : "Boek training"}
+                      {busy === s.id ? "Bezig…" : "Boek training"}
                     </button>
                   </div>
-                );
-              })}
-            </div>
-          )}
-        </section>
+                ))}
+              </div>
+            )}
+          </section>
+        )}
 
-        {feedback.length > 0 && (
+        {tab === "bookings" && (
           <section>
-            <div className="text-[11px] uppercase tracking-[0.3em] text-primary">/ Feedback</div>
-            <h2 className="display-font text-3xl uppercase mt-2 mb-6">Van de coach</h2>
-            <div className="space-y-2">
-              {feedback.map((f) => {
-                const p = players.find((x) => x.id === f.player_id);
-                return (
-                  <div key={f.id} className="border border-border bg-card p-4">
-                    <div className="display-font text-lg uppercase">{p?.player_name ?? "—"}</div>
-                    <div className="text-[10px] uppercase tracking-widest text-muted-foreground">{new Date(f.created_at).toLocaleDateString("nl-NL")}</div>
-                    {f.strengths && <div className="text-sm mt-2"><strong>Sterk:</strong> {f.strengths}</div>}
-                    {f.development_points && <div className="text-sm mt-1"><strong>Ontwikkelen:</strong> {f.development_points}</div>}
-                    {f.feedback_text && <div className="text-sm mt-1 text-muted-foreground italic">"{f.feedback_text}"</div>}
-                  </div>
-                );
-              })}
+            <div className="text-[11px] uppercase tracking-[0.3em] text-primary">/ Mijn boekingen</div>
+            <h2 className="display-font text-3xl uppercase mt-2 mb-6">Aankomende trainingen</h2>
+            {myUpcoming.length === 0 ? (
+              <div className="border border-border bg-card p-6 text-sm text-muted-foreground">Nog geen aankomende trainingen.</div>
+            ) : (
+              <div className="space-y-2">
+                {myUpcoming.map(({ b, s }) => {
+                  const hours = hoursUntil(s.date, s.start_time);
+                  const canCancel = hours >= 48;
+                  return (
+                    <div key={b.id} className="border border-border bg-card p-4 flex items-center justify-between gap-3">
+                      <div>
+                        <div className="display-font text-xl uppercase">{fmtDate(s.date)}</div>
+                        <div className="text-xs uppercase tracking-widest text-muted-foreground mt-1">
+                          {fmtTime(s.start_time)}–{fmtTime(s.end_time)} · {trainingTypeLabel(s.training_type)}{s.location ? ` · ${s.location}` : ""}
+                        </div>
+                        <div className="text-[10px] uppercase tracking-widest mt-1 text-primary">Bevestigd</div>
+                      </div>
+                      {canCancel ? (
+                        <button
+                          onClick={() => setCancelTarget({ b, s })}
+                          className="text-[10px] uppercase tracking-widest border border-destructive/40 text-destructive px-3 py-1.5 hover:bg-destructive/10"
+                        >
+                          Annuleren
+                        </button>
+                      ) : (
+                        <div className="text-[10px] uppercase tracking-widest text-muted-foreground text-right max-w-[160px]">
+                          Annuleren niet meer mogelijk (&lt; 48u). Neem contact op met Ferdi.
+                        </div>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </section>
+        )}
+
+        {tab === "development" && (
+          <section className="space-y-10">
+            <div>
+              <div className="text-[11px] uppercase tracking-[0.3em] text-primary">/ Ontwikkeling</div>
+              <h2 className="display-font text-3xl uppercase mt-2 mb-6">Mijn doelen</h2>
+              {goals.length === 0 ? (
+                <div className="border border-border bg-card p-6 text-sm text-muted-foreground">Nog geen doelen vastgelegd.</div>
+              ) : (
+                <div className="space-y-2">
+                  {goals.map((g) => (
+                    <div key={g.id} className="border border-border bg-card p-4">
+                      <div className="text-sm">{g.description}</div>
+                      <div className="text-[10px] uppercase tracking-widest text-muted-foreground mt-2">Status: {g.status}</div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            <div>
+              <h2 className="display-font text-3xl uppercase mb-6">Huiswerk</h2>
+              {homework.length === 0 ? (
+                <div className="border border-border bg-card p-6 text-sm text-muted-foreground">Geen huiswerk op dit moment.</div>
+              ) : (
+                <div className="space-y-2">
+                  {homework.map((h) => (
+                    <div key={h.id} className="border border-border bg-card p-4 flex items-start gap-3">
+                      <input
+                        type="checkbox"
+                        checked={h.status === "completed"}
+                        onChange={() => toggleHomework(h)}
+                        className="mt-1 h-4 w-4 accent-primary"
+                      />
+                      <div className="flex-1 min-w-0">
+                        <div className={`display-font text-lg uppercase ${h.status === "completed" ? "line-through text-muted-foreground" : ""}`}>{h.title}</div>
+                        {h.description && <div className="text-sm text-muted-foreground mt-1">{h.description}</div>}
+                        {h.video_url && (
+                          <a href={h.video_url} target="_blank" rel="noreferrer" className="text-xs uppercase tracking-widest text-primary mt-2 inline-block">
+                            Bekijk video →
+                          </a>
+                        )}
+                        {h.due_date && <div className="text-[10px] uppercase tracking-widest text-muted-foreground mt-2">Deadline: {fmtDate(h.due_date)}</div>}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            <div>
+              <h2 className="display-font text-3xl uppercase mb-6">Coach notities</h2>
+              {coachNotes.length === 0 ? (
+                <div className="border border-border bg-card p-6 text-sm text-muted-foreground">Nog geen notities van de coach.</div>
+              ) : (
+                <div className="space-y-2">
+                  {coachNotes.map((n) => (
+                    <div key={n.id} className="border border-border bg-card p-4">
+                      <div className="text-[10px] uppercase tracking-widest text-muted-foreground">
+                        {new Date(n.created_at).toLocaleDateString("nl-NL")}
+                      </div>
+                      <div className="text-sm mt-1 whitespace-pre-wrap">{n.note}</div>
+                    </div>
+                  ))}
+                </div>
+              )}
             </div>
           </section>
         )}
+
+        {tab === "profile" && (
+          <section className="space-y-6">
+            <div>
+              <div className="text-[11px] uppercase tracking-[0.3em] text-primary">/ Profiel</div>
+              <h2 className="display-font text-3xl uppercase mt-2 mb-6">Mijn gegevens</h2>
+            </div>
+            <div className="border border-border bg-card p-5 space-y-2">
+              <div className="text-[10px] uppercase tracking-widest text-muted-foreground">Naam</div>
+              <div className="text-sm">{profileName || "—"}</div>
+              <div className="text-[10px] uppercase tracking-widest text-muted-foreground pt-3">E-mail</div>
+              <div className="text-sm">{session.user.email}</div>
+              <div className="text-[10px] uppercase tracking-widest text-muted-foreground pt-3">Telefoon</div>
+              <div className="text-sm">{profilePhone || "—"}</div>
+            </div>
+
+            {players.length > 0 && (
+              <div>
+                <h3 className="display-font text-2xl uppercase mb-4">Speler(s)</h3>
+                <div className="space-y-2">
+                  {players.map((p) => (
+                    <div key={p.id} className="border border-border bg-card p-5">
+                      <div className="display-font text-xl uppercase">{p.player_name}</div>
+                      <div className="text-xs text-muted-foreground mt-2 space-y-1">
+                        {p.birth_year && <div>Geboortejaar: {p.birth_year}</div>}
+                        <div>Club: {p.club ?? "—"}</div>
+                        <div>Team: {p.team ?? "—"}</div>
+                        <div>Positie: {p.position ?? "—"}</div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            <p className="text-xs text-muted-foreground">
+              Wil je gegevens wijzigen? Neem contact op met Ferdi via WhatsApp:{" "}
+              <a href="https://wa.me/31621275348" target="_blank" rel="noreferrer" className="text-primary underline">+31 6 21 27 53 48</a>.
+            </p>
+          </section>
+        )}
       </div>
+
+      <Dialog open={!!cancelTarget} onOpenChange={(o) => !o && setCancelTarget(null)}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Boeking annuleren?</DialogTitle>
+            <DialogDescription>
+              {cancelTarget && (
+                <>
+                  Je staat op het punt je training op <strong>{fmtDate(cancelTarget.s.date)}</strong> om{" "}
+                  <strong>{fmtTime(cancelTarget.s.start_time)}</strong> te annuleren. Dit kun je niet ongedaan maken.
+                </>
+              )}
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <button onClick={() => setCancelTarget(null)} className="px-4 py-2 text-xs uppercase tracking-widest border border-border hover:border-foreground/40">
+              Nee, behoud
+            </button>
+            <button onClick={confirmCancel} className="px-4 py-2 text-xs uppercase tracking-widest bg-destructive text-destructive-foreground hover:bg-destructive/90">
+              Ja, annuleren
+            </button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </main>
   );
 };

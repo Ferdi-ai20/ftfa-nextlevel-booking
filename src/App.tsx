@@ -8,6 +8,7 @@ import Index from "./pages/Index.tsx";
 import Auth from "./pages/Auth.tsx";
 import ResetPassword from "./pages/ResetPassword.tsx";
 import Dashboard from "./pages/Dashboard.tsx";
+import PendingApproval from "./pages/PendingApproval.tsx";
 import Unsubscribe from "./pages/Unsubscribe.tsx";
 import AdminShell from "./pages/admin/AdminShell.tsx";
 import Calendar from "./pages/admin/Calendar.tsx";
@@ -31,6 +32,7 @@ const App = () => (
             <Route path="/auth" element={<Auth />} />
             <Route path="/reset-password" element={<ResetPassword />} />
             <Route path="/dashboard" element={<Dashboard />} />
+            <Route path="/wachten" element={<PendingApproval />} />
             <Route path="/unsubscribe" element={<Unsubscribe />} />
             <Route path="/admin" element={<AdminShell />}>
               <Route index element={<Calendar />} />

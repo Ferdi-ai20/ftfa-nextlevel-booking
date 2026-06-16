@@ -20,3 +20,6 @@ verify_jwt = true
 
 [functions.calendly-webhook]
 verify_jwt = false
+
+[functions.approve-application]
+verify_jwt = true
