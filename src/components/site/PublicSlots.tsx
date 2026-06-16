@@ -248,7 +248,7 @@ const GuestBookingModal = ({ slot, onClose }: { slot: Slot; onClose: () => void 
         club: d.club,
         team: d.team,
         position: d.position,
-        visibility: slot.visibility,
+        visibility: "public",
         bookingType: "guest",
       },
       `admin-booking-${slot.id}-${d.email}`,
