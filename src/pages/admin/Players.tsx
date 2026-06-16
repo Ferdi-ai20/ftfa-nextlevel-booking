@@ -172,6 +172,9 @@ const Players = () => {
                     📝 {sticky ? "Edit" : "Note"}
                   </button>
                   <button onClick={() => startEdit(p)} className="text-[10px] uppercase tracking-widest border border-border px-3 py-1.5 hover:border-foreground/40">Edit</button>
+                  {p.status === "active" && (
+                    <button onClick={() => archive(p)} className="text-[10px] uppercase tracking-widest border border-border px-3 py-1.5 hover:border-foreground/40">Archive</button>
+                  )}
                   <button onClick={() => remove(p)} className="text-[10px] uppercase tracking-widest border border-destructive/40 text-destructive px-3 py-1.5 hover:bg-destructive/10">Del</button>
                 </div>
               </div>
