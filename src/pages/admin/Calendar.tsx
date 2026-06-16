@@ -243,15 +243,7 @@ const Calendar = () => {
     void load();
   };
 
-  const setPayment = async (b: Booking, payment_status: string, payment_method: string | null) => {
-    const { error } = await supabase.from("bookings").update({ payment_status, payment_method } as any).eq("id", b.id);
-    if (error) return toast.error(error.message);
-    void load();
-  };
-
   const getProfileEmail = async (_profileId: string | null) => {
-    // Registered users' emails live in auth.users which isn't readable client-side.
-    // For registered bookings the email is sent via realtime triggers in their dashboard flows.
     return null;
   };
 
