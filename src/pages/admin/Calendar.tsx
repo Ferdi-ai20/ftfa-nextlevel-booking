@@ -323,7 +323,7 @@ const Calendar = () => {
           onVisibility={(v) => setVisibility(editing, v)}
           onCancelBooking={cancelBooking}
           onAcceptBooking={acceptBooking}
-          onSetPayment={setPayment}
+          
           form={form}
           setForm={setForm}
         />
@@ -486,7 +486,7 @@ const SlotDrawer = ({
   onVisibility,
   onCancelBooking,
   onAcceptBooking,
-  onSetPayment,
+  
   form,
   setForm,
   isNew = false,
@@ -499,7 +499,7 @@ const SlotDrawer = ({
   onVisibility?: (v: SlotVisibility) => void;
   onCancelBooking?: (b: Booking) => void;
   onAcceptBooking?: (b: Booking) => void;
-  onSetPayment?: (b: Booking, status: string, method: string | null) => void;
+  
   form: typeof emptyForm;
   setForm: (f: typeof emptyForm) => void;
   isNew?: boolean;
