@@ -40,7 +40,7 @@ const Bookings = () => {
       .select(`
         id, status, guest_name, guest_email, guest_phone, profile_id, created_at, cancelled_at, cancelled_by,
         training_slots ( id, date, start_time, end_time, training_type, visibility, location ),
-        profiles:profile_id ( full_name, phone )
+        profiles:profile_id ( full_name, phone, sticky_note )
       `)
       .order("created_at", { ascending: false });
     setLoading(false);
