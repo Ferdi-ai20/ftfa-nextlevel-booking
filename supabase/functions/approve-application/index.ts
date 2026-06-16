@@ -91,17 +91,16 @@ Deno.serve(async (req) => {
       }
     }
 
-    await enqueue('application-decision', email, {
+    await enqueue('application-approved', email, {
       parentName: app.parent_name,
       playerName: app.player_name,
-      approved: true,
     }, `app-approve-${applicationId}`)
 
-    await enqueue('admin-application-approved', ADMIN_EMAIL, {
+    await enqueue('admin-invite-sent', ADMIN_EMAIL, {
       parentName: app.parent_name,
       playerName: app.player_name,
       email,
-    }, `admin-app-approved-${applicationId}`)
+    }, `admin-invite-${applicationId}`)
 
     return new Response(JSON.stringify({ ok: true, userId }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } })
   } catch (e: any) {
