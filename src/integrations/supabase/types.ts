@@ -744,6 +744,20 @@ export type Database = {
         Args: { payload: Json; queue_name: string }
         Returns: number
       }
+      ensure_application_for_guest: {
+        Args: {
+          _club: string
+          _dob: string
+          _email: string
+          _notes: string
+          _parent_name: string
+          _phone: string
+          _player_name: string
+          _position: string
+          _team: string
+        }
+        Returns: undefined
+      }
       get_slot_price: { Args: { _slot_id: string }; Returns: number }
       guest_booking_email_count_24h: {
         Args: { _email: string }
