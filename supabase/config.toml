@@ -15,14 +15,17 @@ verify_jwt = false
 [functions.handle-email-suppression]
 verify_jwt = false
 
-[functions.send-sunday-reminders]
-verify_jwt = true
-
-[functions.calendly-webhook]
-verify_jwt = false
-
 [functions.approve-application]
 verify_jwt = true
+
+[functions.archive-player]
+verify_jwt = true
+
+[functions.cancel-booking]
+verify_jwt = false
+
+[functions.send-booking-reminders]
+verify_jwt = false
 
 [functions.ical-feed]
 verify_jwt = false
