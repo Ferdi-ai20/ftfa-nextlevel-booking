@@ -22,7 +22,7 @@ type Row = {
     visibility: string;
     location: string | null;
   } | null;
-  profiles: { full_name: string | null; phone: string | null } | null;
+  profiles: { full_name: string | null; phone: string | null; sticky_note: string | null } | null;
 };
 
 const Bookings = () => {
@@ -40,7 +40,7 @@ const Bookings = () => {
       .select(`
         id, status, guest_name, guest_email, guest_phone, profile_id, created_at, cancelled_at, cancelled_by,
         training_slots ( id, date, start_time, end_time, training_type, visibility, location ),
-        profiles:profile_id ( full_name, phone )
+        profiles:profile_id ( full_name, phone, sticky_note )
       `)
       .order("created_at", { ascending: false });
     setLoading(false);
@@ -49,10 +49,10 @@ const Bookings = () => {
   };
 
   const cancel = async (r: Row) => {
-    if (!confirm("Boeking annuleren?")) return;
+    if (!confirm("Cancel this booking?")) return;
     const { error } = await supabase.from("bookings").update({ status: "cancelled", cancelled_by: "admin" }).eq("id", r.id);
     if (error) return toast.error(error.message);
-    toast.success("Geannuleerd");
+    toast.success("Cancelled");
     void load();
   };
 
@@ -82,10 +82,10 @@ const Bookings = () => {
       <header className="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-4">
         <div>
           <div className="text-[11px] uppercase tracking-[0.3em] text-primary">/ Bookings</div>
-          <h1 className="display-font text-2xl md:text-3xl uppercase mt-2">Boekingen</h1>
+          <h1 className="display-font text-2xl md:text-3xl uppercase mt-2">Bookings</h1>
         </div>
         <div className="flex gap-2 flex-wrap">
-          <input placeholder="Zoek naam/email" value={search} onChange={(e) => setSearch(e.target.value)} className="bg-background border border-border px-3 py-2 text-sm" />
+          <input placeholder="Search name / email" value={search} onChange={(e) => setSearch(e.target.value)} className="bg-background border border-border px-3 py-2 text-sm" />
           <div className="flex border border-border">
             {(["upcoming", "past", "cancelled", "all"] as const).map((f) => (
               <button key={f} onClick={() => setFilter(f)} className={`px-3 py-2 text-[11px] uppercase tracking-widest ${filter === f ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:text-foreground"}`}>{f}</button>
@@ -95,16 +95,17 @@ const Bookings = () => {
       </header>
 
       {loading ? (
-        <div className="border border-border p-6 text-sm text-muted-foreground">Laden…</div>
+        <div className="border border-border p-6 text-sm text-muted-foreground">Loading…</div>
       ) : filtered.length === 0 ? (
-        <div className="border border-border p-6 text-sm text-muted-foreground">Geen boekingen.</div>
+        <div className="border border-border p-6 text-sm text-muted-foreground">No bookings found.</div>
       ) : (
         <div className="border border-border bg-card divide-y divide-border">
           {filtered.map((r) => {
             const s = r.training_slots!;
             const who = r.guest_name ?? r.profiles?.full_name ?? "—";
             const contact = r.guest_email ?? r.profiles?.phone ?? "";
-            const source = r.profile_id ? "Speler" : "Gast";
+            const source = r.profile_id ? "Player" : "Guest";
+            const sticky = r.profile_id ? r.profiles?.sticky_note?.trim() : null;
             return (
               <div key={r.id} className="p-4 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
                 <div className="min-w-0">
@@ -117,16 +118,19 @@ const Bookings = () => {
                     {contact && <span className="text-muted-foreground"> · {contact}</span>}
                     <span className="text-muted-foreground"> · {source}</span>
                   </div>
+                  {sticky && (
+                    <div className="text-[11px] text-muted-foreground italic mt-1">📝 {sticky}</div>
+                  )}
                   {r.status === "cancelled" && (
                     <div className="text-[10px] uppercase tracking-widest text-destructive mt-1">
-                      Geannuleerd door {r.cancelled_by ?? "?"}{r.cancelled_at ? ` · ${new Date(r.cancelled_at).toLocaleString("nl-NL")}` : ""}
+                      Cancelled by {r.cancelled_by ?? "?"}{r.cancelled_at ? ` · ${new Date(r.cancelled_at).toLocaleString("en-GB")}` : ""}
                     </div>
                   )}
                 </div>
                 <div className="flex gap-2 shrink-0">
                   <span className={`text-[10px] uppercase tracking-widest px-2 py-1 border ${r.status === "confirmed" ? "border-primary text-primary" : "border-border text-muted-foreground"}`}>{r.status}</span>
                   {r.status === "confirmed" && (
-                    <button onClick={() => cancel(r)} className="text-[10px] uppercase tracking-widest border border-destructive/40 text-destructive px-3 py-1.5 hover:bg-destructive/10">Annuleer</button>
+                    <button onClick={() => cancel(r)} className="text-[10px] uppercase tracking-widest border border-destructive/40 text-destructive px-3 py-1.5 hover:bg-destructive/10">Cancel</button>
                   )}
                 </div>
               </div>
