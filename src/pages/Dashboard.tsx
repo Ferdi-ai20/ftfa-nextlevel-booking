@@ -126,7 +126,7 @@ const Dashboard = () => {
       return;
     }
     if (!confirm("Boeking annuleren?")) return;
-    const { error } = await supabase.from("bookings").update({ status: "cancelled_by_player" }).eq("id", b.id);
+    const { error } = await supabase.from("bookings").update({ status: "cancelled", cancelled_by: "player" }).eq("id", b.id);
     if (error) return toast.error(error.message);
     toast.success("Geannuleerd");
     if (s) {
@@ -209,8 +209,6 @@ const Dashboard = () => {
               <option value="one_on_one">1-op-1</option>
               <option value="duo">Duo</option>
               <option value="small_group">Small Group</option>
-              <option value="bvo_small_group">BVO Small Group</option>
-              <option value="trial">Proeftraining</option>
             </select>
           </div>
 
