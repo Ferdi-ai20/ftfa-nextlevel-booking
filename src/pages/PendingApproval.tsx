@@ -75,7 +75,7 @@ const PendingApproval = () => {
           ) : (
             <>
               <p className="text-sm text-muted-foreground">
-                Helaas is je aanmelding op dit moment niet goedgekeurd. Er is geen plek in de selectie.
+                Helaas is je aanmelding op dit moment niet goedgekeurd. Ferdi neemt contact met je op als er in de toekomst ruimte is.
               </p>
               <p className="text-sm text-muted-foreground">
                 Vragen? Neem contact op met Ferdi via WhatsApp:{" "}
