@@ -23,21 +23,15 @@ type Slot = {
   visibility: SlotVisibility;
   status: SlotStatus;
   max_players: number;
-  price_per_player: number | null;
   location: string | null;
   admin_note: string | null;
   player_note: string | null;
-  auto_public_enabled: boolean;
-  auto_public_hours_before: number;
-  auto_public_min_bookings_threshold: number;
 };
 
 type Booking = {
   id: string;
   slot_id: string;
   status: BookingStatus;
-  payment_status: string;
-  payment_method: string | null;
   guest_name: string | null;
   guest_email: string | null;
   guest_phone: string | null;
@@ -69,10 +63,8 @@ const visibilityColors: Record<SlotVisibility, string> = {
 };
 const statusBadge: Record<SlotStatus, string> = {
   open: "bg-card border-border",
-  reserved: "bg-amber-500/10 border-amber-500/30",
-  booked: "bg-destructive/10 border-destructive/30",
+  full: "bg-destructive/10 border-destructive/30",
   cancelled: "bg-muted/40 border-border line-through",
-  expired: "bg-muted/40 border-border opacity-60",
 };
 
 const emptyForm = {
@@ -86,9 +78,6 @@ const emptyForm = {
   location: "",
   admin_note: "",
   player_note: "",
-  auto_public_enabled: false,
-  auto_public_hours_before: 24,
-  auto_public_min_bookings_threshold: 1,
 };
 
 const Calendar = () => {
@@ -119,7 +108,7 @@ const Calendar = () => {
   const load = async () => {
     const { data: s, error } = await supabase
       .from("training_slots")
-      .select("*")
+      .select("id, date, start_time, end_time, training_type, visibility, status, max_players, location, admin_note, player_note")
       .gte("date", isoDay(range.from))
       .lt("date", isoDay(range.to))
       .order("date")
@@ -131,7 +120,7 @@ const Calendar = () => {
     setSlots((s ?? []) as Slot[]);
     if (s && s.length) {
       const ids = s.map((x) => x.id);
-      const { data: b } = await supabase.from("bookings").select("*").in("slot_id", ids);
+      const { data: b } = await supabase.from("bookings").select("id, slot_id, status, guest_name, guest_email, guest_phone, profile_id, player_id").in("slot_id", ids);
       setBookings((b ?? []) as Booking[]);
     } else {
       setBookings([]);
@@ -146,9 +135,15 @@ const Calendar = () => {
     setForm({ ...emptyForm, date });
     setCreating({ date });
   };
-  const openEdit = (s: Slot) => {
+  const openEdit = async (s: Slot) => {
     setCreating(null);
     setEditing(s);
+    // Admin-only: fetch price via secure function
+    let price = "";
+    try {
+      const { data } = await supabase.rpc("get_slot_price", { _slot_id: s.id });
+      if (data != null) price = String(data);
+    } catch { /* ignore */ }
     setForm({
       date: s.date,
       start_time: s.start_time.slice(0, 5),
@@ -156,13 +151,10 @@ const Calendar = () => {
       training_type: s.training_type,
       visibility: s.visibility,
       max_players: s.max_players,
-      price_per_player: s.price_per_player?.toString() ?? "",
+      price_per_player: price,
       location: s.location ?? "",
       admin_note: s.admin_note ?? "",
       player_note: s.player_note ?? "",
-      auto_public_enabled: s.auto_public_enabled,
-      auto_public_hours_before: s.auto_public_hours_before,
-      auto_public_min_bookings_threshold: s.auto_public_min_bookings_threshold,
     });
   };
 
@@ -178,21 +170,24 @@ const Calendar = () => {
       training_type: form.training_type,
       visibility: form.visibility,
       max_players: form.max_players,
-      price_per_player: form.price_per_player ? Number(form.price_per_player) : null,
       location: form.location || null,
       admin_note: form.admin_note || null,
       player_note: form.player_note || null,
-      auto_public_enabled: form.auto_public_enabled,
-      auto_public_hours_before: form.auto_public_hours_before,
-      auto_public_min_bookings_threshold: form.auto_public_min_bookings_threshold,
     };
+    const priceVal = form.price_per_player ? Number(form.price_per_player) : null;
     if (editing) {
       const { error } = await supabase.from("training_slots").update(payload).eq("id", editing.id);
       if (error) return toast.error(error.message);
+      if (priceVal !== null) {
+        await supabase.rpc("admin_set_slot_price", { _slot_id: editing.id, _price: priceVal });
+      }
       toast.success("Slot bijgewerkt");
     } else {
-      const { error } = await supabase.from("training_slots").insert(payload);
+      const { data, error } = await supabase.from("training_slots").insert(payload).select("id").single();
       if (error) return toast.error(error.message);
+      if (data?.id && priceVal !== null) {
+        await supabase.rpc("admin_set_slot_price", { _slot_id: data.id, _price: priceVal });
+      }
       toast.success("Slot aangemaakt");
     }
     setCreating(null);
@@ -216,7 +211,7 @@ const Calendar = () => {
 
   const cancelBooking = async (b: Booking) => {
     if (!confirm("Boeking annuleren?")) return;
-    const { error } = await supabase.from("bookings").update({ status: "cancelled_by_admin" }).eq("id", b.id);
+    const { error } = await supabase.from("bookings").update({ status: "cancelled", cancelled_by: "admin" }).eq("id", b.id);
     if (error) return toast.error(error.message);
     const s = slots.find((x) => x.id === b.slot_id);
     const email = b.guest_email ?? (await getProfileEmail(b.profile_id));
