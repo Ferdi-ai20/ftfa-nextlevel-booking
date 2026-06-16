@@ -1,15 +1,28 @@
-Het huidige domein `notify.ftfaacademy.nl` is mislukt omdat het al bij een andere Mailgun-account geregistreerd staat. We zetten een nieuw subdomein op: **mail.ftfaacademy.nl**.
+# Favicon vervangen met nieuw FTFA-logo
 
-## Stappen
+## Probleem
+De browsertab toont nog het oude FT-shield logo uit de WordPress-tijd, omdat `public/favicon.ico` nog het oude bestand is en er geen expliciete favicon-link in `index.html` staat.
 
-1. Bestaande mislukte domein-registratie (`notify.ftfaacademy.nl`) opruimen via de Email-setup dialoog.
-2. Nieuw domein `mail.ftfaacademy.nl` toevoegen via de email setup flow.
-3. Jij voegt bij je DNS-provider (waar `ftfaacademy.nl` beheerd wordt) de NS-records toe die Lovable opgeeft (`ns3.lovable.cloud` / `ns4.lovable.cloud` op subdomein `mail`).
-4. Wachten op DNS-propagatie (kan tot 72 uur, meestal sneller).
-5. Zodra status `active` is, gaan alle transactionele mails (booking-bevestigingen, application decisions, etc.) automatisch verzenden vanaf `mail.ftfaacademy.nl`.
-6. De bestaande edge functions en email templates blijven werken — alleen het afzenderdomein verandert; geen code-wijzigingen nodig.
+## Aanpak
+
+1. **Favicon-bestand vervangen**
+   - Het uploaded logo (`BB008121-9121-4E3A-8277-7B0DE29E8680.png`) is breed met veel zwarte ruimte eromheen — als favicon (16×16 / 32×32 px) wordt de tekst onleesbaar klein.
+   - Crop het logo naar een vierkant frame rond de "FTFA" tekst (met wat padding) zodat het herkenbaar blijft op klein formaat.
+   - Schrijf het resultaat naar `public/favicon.png` (vierkant, ~512×512).
+   - Verwijder de oude `public/favicon.ico` zodat browsers niet automatisch terugvallen op het oude shield.
+
+2. **`index.html` updaten**
+   - Voeg expliciete favicon-links toe in `<head>`:
+     ```html
+     <link rel="icon" type="image/png" href="/favicon.png" />
+     <link rel="apple-touch-icon" href="/favicon.png" />
+     ```
 
 ## Belangrijk om te weten
+- **Browser-cache:** Safari/Chrome cachen favicons agressief. Zelfs na deze update kan het oude logo nog enkele uren of dagen in je tab-switcher staan tot de cache vervalt. Hard refresh (Cmd+Shift+R) of de tab sluiten en opnieuw openen helpt meestal.
+- **Tab-switcher screenshot:** de afbeelding die je deelde komt uit Safari's tab-overzicht — dat is een gecachete preview van toen je de pagina voor het laatst bezocht. Die preview update pas als je de pagina opnieuw laadt.
 
-- Zorg dat `mail.ftfaacademy.nl` nergens anders al in gebruik is (geen oude Mailgun/Resend/SendGrid registratie), anders krijgen we dezelfde fout opnieuw.
-- Verwijder ook eventuele bestaande NS/MX/TXT records op `mail` subdomein bij je DNS provider voordat je de Lovable NS records toevoegt.
+## Bestanden
+- `public/favicon.png` (nieuw)
+- `public/favicon.ico` (verwijderen)
+- `index.html` (favicon-links toevoegen)
