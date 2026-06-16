@@ -226,22 +226,6 @@ const Calendar = () => {
     void load();
   };
 
-  const acceptBooking = async (b: Booking) => {
-    const { error } = await supabase.from("bookings").update({ status: "confirmed" }).eq("id", b.id);
-    if (error) return toast.error(error.message);
-    toast.success("Boeking geaccepteerd");
-    const s = slots.find((x) => x.id === b.slot_id);
-    const email = b.guest_email ?? (await getProfileEmail(b.profile_id));
-    if (email && s) {
-      void notify("booking-accepted-public", email, {
-        guestName: b.guest_name ?? "",
-        date: fmtDate(s.date),
-        slotTime: fmtTime(s.start_time),
-        location: s.location ?? "",
-      }, `accept-${b.id}`);
-    }
-    void load();
-  };
 
   const getProfileEmail = async (_profileId: string | null) => {
     return null;
@@ -322,7 +306,6 @@ const Calendar = () => {
           onSave={save}
           onVisibility={(v) => setVisibility(editing, v)}
           onCancelBooking={cancelBooking}
-          onAcceptBooking={acceptBooking}
           
           form={form}
           setForm={setForm}
@@ -485,7 +468,6 @@ const SlotDrawer = ({
   onSave,
   onVisibility,
   onCancelBooking,
-  onAcceptBooking,
   
   form,
   setForm,
@@ -498,7 +480,6 @@ const SlotDrawer = ({
   onSave: () => void;
   onVisibility?: (v: SlotVisibility) => void;
   onCancelBooking?: (b: Booking) => void;
-  onAcceptBooking?: (b: Booking) => void;
   
   form: typeof emptyForm;
   setForm: (f: typeof emptyForm) => void;
