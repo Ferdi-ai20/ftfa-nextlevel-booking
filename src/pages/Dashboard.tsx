@@ -186,18 +186,20 @@ const Dashboard = () => {
     }
     toast.success("Boeking geannuleerd.");
     void notify("booking-cancelled", session!.user.email, {
-      playerName: profileName,
+      recipientName: profileName,
       date: fmtDate(s.date),
       slotTime: fmtTime(s.start_time),
       trainingType: trainingTypeLabel(s.training_type),
+      byAdmin: false,
     }, `cancel-${b.id}`);
-    void notify("admin-new-booking", ADMIN_EMAIL, {
-      who: `${profileName || session!.user.email} (ANNULERING)`,
+    void notify("admin-booking-cancelled", ADMIN_EMAIL, {
+      who: profileName || session!.user.email,
+      contact: session!.user.email,
       date: fmtDate(s.date),
       slotTime: fmtTime(s.start_time),
       trainingType: trainingTypeLabel(s.training_type),
-      contact: session!.user.email,
-      source: "player-cancel",
+      cancelledBy: "player",
+      cancelledAt: new Date().toISOString().slice(0, 16).replace("T", " "),
     }, `admin-cancel-${b.id}`);
     void loadAll();
   };
