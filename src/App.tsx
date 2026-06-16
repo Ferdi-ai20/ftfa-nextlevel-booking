@@ -38,8 +38,10 @@ const App = () => (
             <Route path="/unsubscribe" element={<Unsubscribe />} />
             <Route path="/admin" element={<AdminShell />}>
               <Route index element={<Calendar />} />
+              <Route path="bookings" element={<Bookings />} />
               <Route path="applications" element={<Applications />} />
               <Route path="players" element={<Players />} />
+              <Route path="development" element={<Development />} />
               <Route path="feedback" element={<Feedback />} />
               <Route path="settings" element={<Settings />} />
             </Route>
