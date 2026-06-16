@@ -123,6 +123,14 @@ const Players = () => {
     void load();
   };
 
+  const archive = async (p: Player) => {
+    if (!confirm(`Speler ${p.player_name} archiveren? Toekomstige boekingen worden geannuleerd en de login wordt uitgeschakeld.`)) return;
+    const { data, error } = await supabase.functions.invoke("archive-player", { body: { profileId: p.parent_profile_id } });
+    if (error || (data as any)?.error) return toast.error((data as any)?.error || error?.message || "Archiveren mislukt");
+    toast.success("Speler gearchiveerd");
+    void load();
+  };
+
   const filtered = players.filter((p) =>
     !search ||
     p.player_name.toLowerCase().includes(search.toLowerCase()) ||
