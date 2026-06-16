@@ -546,22 +546,6 @@ const SlotDrawer = ({
         <L label="Notitie (zichtbaar voor speler)" full><textarea rows={2} value={form.player_note} onChange={(e) => setForm({ ...form, player_note: e.target.value })} className={inputCls} /></L>
       </div>
 
-      <div className="border border-border p-3 space-y-3">
-        <label className="flex items-center gap-2 text-sm">
-          <input type="checkbox" checked={form.auto_public_enabled} onChange={(e) => setForm({ ...form, auto_public_enabled: e.target.checked })} />
-          Auto-public maken als slot bijna leeg is
-        </label>
-        {form.auto_public_enabled && (
-          <div className="grid sm:grid-cols-2 gap-3">
-            <L label="Uren vóór start">
-              <input type="number" min={1} max={168} value={form.auto_public_hours_before} onChange={(e) => setForm({ ...form, auto_public_hours_before: Number(e.target.value) })} className={inputCls} />
-            </L>
-            <L label="Public als boekingen <">
-              <input type="number" min={0} value={form.auto_public_min_bookings_threshold} onChange={(e) => setForm({ ...form, auto_public_min_bookings_threshold: Number(e.target.value) })} className={inputCls} />
-            </L>
-          </div>
-        )}
-      </div>
 
       {!isNew && slot && (
         <>
@@ -584,27 +568,11 @@ const SlotDrawer = ({
                       <div className="text-muted-foreground">{b.guest_email ?? ""} · {b.status}</div>
                     </div>
                     <div className="flex gap-1 shrink-0">
-                      {b.status === "pending_review" && (
-                        <button onClick={() => onAcceptBooking?.(b)} className="text-[9px] uppercase border border-primary text-primary px-2 py-1 hover:bg-primary/10">Accept</button>
+                      {b.status === "confirmed" && (
+                        <button onClick={() => onCancelBooking?.(b)} className="text-[9px] uppercase border border-destructive/40 text-destructive px-2 py-1 hover:bg-destructive/10">Cancel</button>
                       )}
-                      <button onClick={() => onCancelBooking?.(b)} className="text-[9px] uppercase border border-destructive/40 text-destructive px-2 py-1 hover:bg-destructive/10">Cancel</button>
                     </div>
                   </div>
-                  {onSetPayment && (
-                    <div className="flex flex-wrap gap-1 items-center pt-1 border-t border-border/60">
-                      <span className="text-[9px] uppercase tracking-widest text-muted-foreground">Betaling:</span>
-                      {(["not_required","unpaid","paid","refunded"] as const).map((ps) => (
-                        <button key={ps} onClick={() => onSetPayment(b, ps, b.payment_method)} className={`text-[9px] uppercase px-2 py-1 border ${b.payment_status === ps ? "border-primary text-primary bg-primary/10" : "border-border text-muted-foreground"}`}>{ps}</button>
-                      ))}
-                      <select value={b.payment_method ?? ""} onChange={(e) => onSetPayment(b, b.payment_status, e.target.value || null)} className="text-[10px] bg-background border border-border px-1.5 py-1 ml-auto">
-                        <option value="">methode</option>
-                        <option value="cash">cash</option>
-                        <option value="bank_transfer">overschrijving</option>
-                        <option value="tikkie">tikkie</option>
-                        <option value="online">online</option>
-                      </select>
-                    </div>
-                  )}
                 </div>
               ))}
             </div>
