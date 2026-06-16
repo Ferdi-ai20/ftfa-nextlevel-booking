@@ -153,8 +153,9 @@ const Dashboard = () => {
       return;
     }
     toast.success("Geboekt!");
-    void notify("booking-confirmed-private", session!.user.email, {
-      playerName: profileName,
+    void notify("booking-confirmed", session!.user.email, {
+      parentName: profileName,
+      playerName: players[0]?.player_name ?? "",
       date: fmtDate(s.date),
       slotTime: fmtTime(s.start_time),
       trainingType: trainingTypeLabel(s.training_type),
@@ -165,8 +166,10 @@ const Dashboard = () => {
       date: fmtDate(s.date),
       slotTime: fmtTime(s.start_time),
       trainingType: trainingTypeLabel(s.training_type),
+      location: s.location ?? "",
       contact: session!.user.email,
-      source: "player",
+      bookingType: "player",
+      visibility: s.visibility,
     }, `admin-book-${s.id}-${session!.user.id}`);
     void loadAll();
   };
