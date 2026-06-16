@@ -82,10 +82,10 @@ const Bookings = () => {
       <header className="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-4">
         <div>
           <div className="text-[11px] uppercase tracking-[0.3em] text-primary">/ Bookings</div>
-          <h1 className="display-font text-2xl md:text-3xl uppercase mt-2">Boekingen</h1>
+          <h1 className="display-font text-2xl md:text-3xl uppercase mt-2">Bookings</h1>
         </div>
         <div className="flex gap-2 flex-wrap">
-          <input placeholder="Zoek naam/email" value={search} onChange={(e) => setSearch(e.target.value)} className="bg-background border border-border px-3 py-2 text-sm" />
+          <input placeholder="Search name / email" value={search} onChange={(e) => setSearch(e.target.value)} className="bg-background border border-border px-3 py-2 text-sm" />
           <div className="flex border border-border">
             {(["upcoming", "past", "cancelled", "all"] as const).map((f) => (
               <button key={f} onClick={() => setFilter(f)} className={`px-3 py-2 text-[11px] uppercase tracking-widest ${filter === f ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:text-foreground"}`}>{f}</button>
@@ -95,9 +95,9 @@ const Bookings = () => {
       </header>
 
       {loading ? (
-        <div className="border border-border p-6 text-sm text-muted-foreground">Laden…</div>
+        <div className="border border-border p-6 text-sm text-muted-foreground">Loading…</div>
       ) : filtered.length === 0 ? (
-        <div className="border border-border p-6 text-sm text-muted-foreground">Geen boekingen.</div>
+        <div className="border border-border p-6 text-sm text-muted-foreground">No bookings found.</div>
       ) : (
         <div className="border border-border bg-card divide-y divide-border">
           {filtered.map((r) => {
