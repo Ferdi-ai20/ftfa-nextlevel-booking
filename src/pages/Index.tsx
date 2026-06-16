@@ -6,7 +6,7 @@ import Framework from "@/components/site/Framework";
 import Services from "@/components/site/Services";
 import Coach from "@/components/site/Coach";
 import PublicSlots from "@/components/site/PublicSlots";
-import WaitlistForm from "@/components/site/WaitlistForm";
+// Application form will be rebuilt in Phase 4 per the new spec
 import Proof from "@/components/site/Proof";
 import CTA from "@/components/site/CTA";
 import Footer from "@/components/site/Footer";
@@ -24,7 +24,7 @@ const Index = () => {
       <Coach />
       <Proof />
       <PublicSlots />
-      <WaitlistForm />
+      
       <CTA />
       <Footer />
       <StickyCTA />
