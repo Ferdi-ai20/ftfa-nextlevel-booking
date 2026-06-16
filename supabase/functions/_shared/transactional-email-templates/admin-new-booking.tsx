@@ -4,16 +4,13 @@ import { Body, Container, Head, Heading, Html, Preview, Section, Text } from 'np
 import type { TemplateEntry } from './registry.ts'
 
 interface Props {
-  who?: string
-  date?: string
-  slotTime?: string
-  trainingType?: string
-  location?: string
-  contact?: string
-  bookingType?: 'guest' | 'player'
+  who?: string; date?: string; slotTime?: string; trainingType?: string;
+  location?: string; contact?: string; phone?: string;
+  bookingType?: 'guest' | 'player'; visibility?: string;
+  birthYear?: number | string; club?: string; team?: string; position?: string;
 }
 
-const Email = ({ who, date, slotTime, trainingType, location, contact, bookingType }: Props) => (
+const Email = (p: Props) => (
   <Html lang="en" dir="ltr">
     <Head />
     <Preview>New booking — FTFA Academy</Preview>
@@ -21,13 +18,19 @@ const Email = ({ who, date, slotTime, trainingType, location, contact, bookingTy
       <Container style={container}>
         <Heading style={h1}>New booking</Heading>
         <Text style={text}>
-          {who ?? 'Someone'} booked a slot{date ? ` on ${date}` : ''}{slotTime ? ` at ${slotTime}` : ''}.
+          {p.who ?? 'Someone'} booked a slot{p.date ? ` on ${p.date}` : ''}{p.slotTime ? ` at ${p.slotTime}` : ''}.
         </Text>
         <Section style={card}>
-          {trainingType && <Text style={cardRow}><strong>Type:</strong> {trainingType}</Text>}
-          {location && <Text style={cardRow}><strong>Location:</strong> {location}</Text>}
-          {contact && <Text style={cardRow}><strong>Contact:</strong> {contact}</Text>}
-          {bookingType && <Text style={cardRow}><strong>Source:</strong> {bookingType === 'guest' ? 'Guest (public slot)' : 'Active player (private slot)'}</Text>}
+          {p.trainingType && <Text style={cardRow}><strong>Type:</strong> {p.trainingType}</Text>}
+          {p.location && <Text style={cardRow}><strong>Location:</strong> {p.location}</Text>}
+          {p.visibility && <Text style={cardRow}><strong>Visibility:</strong> {p.visibility}</Text>}
+          {p.contact && <Text style={cardRow}><strong>Email:</strong> {p.contact}</Text>}
+          {p.phone && <Text style={cardRow}><strong>Phone:</strong> {p.phone}</Text>}
+          {p.birthYear && <Text style={cardRow}><strong>Birth year:</strong> {String(p.birthYear)}</Text>}
+          {p.club && <Text style={cardRow}><strong>Club:</strong> {p.club}</Text>}
+          {p.team && <Text style={cardRow}><strong>Team:</strong> {p.team}</Text>}
+          {p.position && <Text style={cardRow}><strong>Position:</strong> {p.position}</Text>}
+          {p.bookingType && <Text style={cardRow}><strong>Source:</strong> {p.bookingType === 'guest' ? 'Guest (public slot)' : 'Active player (private slot)'}</Text>}
         </Section>
         <Text style={footer}>— FTFA Academy backend</Text>
       </Container>
@@ -39,7 +42,7 @@ export const template = {
   component: Email,
   subject: 'New booking — FTFA Academy',
   displayName: 'Admin: new booking',
-  previewData: { who: 'Sara (parent of Tim)', date: 'Saturday 21 June', slotTime: '11:00', trainingType: '1-on-1', location: 'Sportpark Olympia', contact: 'sara@example.com · 0612345678', bookingType: 'guest' },
+  previewData: { who: 'Sara (parent of Tim)', date: 'Saturday 21 June', slotTime: '11:00', trainingType: '1-on-1', location: 'Sportpark Olympia', contact: 'sara@example.com', phone: '0612345678', bookingType: 'guest' },
 } satisfies TemplateEntry
 
 const main = { backgroundColor: '#ffffff', fontFamily: 'Inter, Arial, sans-serif' }

@@ -221,7 +221,7 @@ const GuestBookingModal = ({ slot, onClose }: { slot: Slot; onClose: () => void 
     });
 
     void notify(
-      "booking-confirmation",
+      "booking-confirmed",
       d.email,
       {
         parentName: d.parent_name,
@@ -237,15 +237,37 @@ const GuestBookingModal = ({ slot, onClose }: { slot: Slot; onClose: () => void 
       "admin-new-booking",
       ADMIN_EMAIL,
       {
-        who: `${d.parent_name} (ouder van ${d.player_name})`,
+        who: `${d.parent_name} (parent of ${d.player_name})`,
         date: fmtDate(slot.date),
         slotTime: `${fmtTime(slot.start_time)}–${fmtTime(slot.end_time)}`,
         trainingType: trainingTypeLabel(slot.training_type),
         location: slot.location ?? "",
-        contact: `${d.email} · ${d.phone}`,
+        contact: d.email,
+        phone: d.phone,
+        birthYear: dobYear,
+        club: d.club,
+        team: d.team,
+        position: d.position,
+        visibility: "public",
         bookingType: "guest",
       },
       `admin-booking-${slot.id}-${d.email}`,
+    );
+    void notify(
+      "application-submitted",
+      ADMIN_EMAIL,
+      {
+        parentName: d.parent_name,
+        playerName: d.player_name,
+        email: d.email,
+        phone: d.phone,
+        birthYear: dobYear,
+        club: d.club,
+        team: d.team,
+        position: d.position,
+        notes: `Auto from guest booking ${fmtDate(slot.date)} ${fmtTime(slot.start_time)}`,
+      },
+      `app-sub-${slot.id}-${d.email}`,
     );
   };
 

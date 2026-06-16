@@ -153,8 +153,9 @@ const Dashboard = () => {
       return;
     }
     toast.success("Geboekt!");
-    void notify("booking-confirmed-private", session!.user.email, {
-      playerName: profileName,
+    void notify("booking-confirmed", session!.user.email, {
+      parentName: profileName,
+      playerName: players[0]?.player_name ?? "",
       date: fmtDate(s.date),
       slotTime: fmtTime(s.start_time),
       trainingType: trainingTypeLabel(s.training_type),
@@ -165,8 +166,10 @@ const Dashboard = () => {
       date: fmtDate(s.date),
       slotTime: fmtTime(s.start_time),
       trainingType: trainingTypeLabel(s.training_type),
+      location: s.location ?? "",
       contact: session!.user.email,
-      source: "player",
+      bookingType: "player",
+      visibility: s.visibility,
     }, `admin-book-${s.id}-${session!.user.id}`);
     void loadAll();
   };
@@ -183,18 +186,20 @@ const Dashboard = () => {
     }
     toast.success("Boeking geannuleerd.");
     void notify("booking-cancelled", session!.user.email, {
-      playerName: profileName,
+      recipientName: profileName,
       date: fmtDate(s.date),
       slotTime: fmtTime(s.start_time),
       trainingType: trainingTypeLabel(s.training_type),
+      byAdmin: false,
     }, `cancel-${b.id}`);
-    void notify("admin-new-booking", ADMIN_EMAIL, {
-      who: `${profileName || session!.user.email} (ANNULERING)`,
+    void notify("admin-booking-cancelled", ADMIN_EMAIL, {
+      who: profileName || session!.user.email,
+      contact: session!.user.email,
       date: fmtDate(s.date),
       slotTime: fmtTime(s.start_time),
       trainingType: trainingTypeLabel(s.training_type),
-      contact: session!.user.email,
-      source: "player-cancel",
+      cancelledBy: "player",
+      cancelledAt: new Date().toISOString().slice(0, 16).replace("T", " "),
     }, `admin-cancel-${b.id}`);
     void loadAll();
   };

@@ -123,6 +123,14 @@ const Players = () => {
     void load();
   };
 
+  const archive = async (p: Player) => {
+    if (!confirm(`Speler ${p.player_name} archiveren? Toekomstige boekingen worden geannuleerd en de login wordt uitgeschakeld.`)) return;
+    const { data, error } = await supabase.functions.invoke("archive-player", { body: { profileId: p.parent_profile_id } });
+    if (error || (data as any)?.error) return toast.error((data as any)?.error || error?.message || "Archiveren mislukt");
+    toast.success("Speler gearchiveerd");
+    void load();
+  };
+
   const filtered = players.filter((p) =>
     !search ||
     p.player_name.toLowerCase().includes(search.toLowerCase()) ||
@@ -164,6 +172,9 @@ const Players = () => {
                     📝 {sticky ? "Edit" : "Note"}
                   </button>
                   <button onClick={() => startEdit(p)} className="text-[10px] uppercase tracking-widest border border-border px-3 py-1.5 hover:border-foreground/40">Edit</button>
+                  {p.status === "active" && (
+                    <button onClick={() => archive(p)} className="text-[10px] uppercase tracking-widest border border-border px-3 py-1.5 hover:border-foreground/40">Archive</button>
+                  )}
                   <button onClick={() => remove(p)} className="text-[10px] uppercase tracking-widest border border-destructive/40 text-destructive px-3 py-1.5 hover:bg-destructive/10">Del</button>
                 </div>
               </div>

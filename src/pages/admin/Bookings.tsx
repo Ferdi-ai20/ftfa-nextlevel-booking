@@ -50,8 +50,8 @@ const Bookings = () => {
 
   const cancel = async (r: Row) => {
     if (!confirm("Cancel this booking?")) return;
-    const { error } = await supabase.from("bookings").update({ status: "cancelled", cancelled_by: "admin" }).eq("id", r.id);
-    if (error) return toast.error(error.message);
+    const { data, error } = await supabase.functions.invoke("cancel-booking", { body: { bookingId: r.id } });
+    if (error || (data as any)?.error) return toast.error((data as any)?.error || error?.message || "Cancel failed");
     toast.success("Cancelled");
     void load();
   };

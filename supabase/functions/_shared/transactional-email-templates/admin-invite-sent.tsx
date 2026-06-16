@@ -8,16 +8,18 @@ interface Props { parentName?: string; playerName?: string; email?: string }
 const Email = ({ parentName, playerName, email }: Props) => (
   <Html lang="en" dir="ltr">
     <Head />
-    <Preview>Application approved & invite sent</Preview>
+    <Preview>Invite sent — FTFA Academy</Preview>
     <Body style={main}>
       <Container style={container}>
-        <Heading style={h1}>Application approved</Heading>
+        <Heading style={h1}>Invite sent</Heading>
         <Text style={text}>
-          {parentName ?? 'Parent'} ({email}) was approved for player {playerName ?? '—'}.
+          Application approved for player <strong>{playerName ?? '—'}</strong>
+          {parentName ? ` (parent ${parentName})` : ''}.
         </Text>
         <Text style={text}>
-          A Supabase invite email has been sent to {email}. Once they set a password they can log in and book private slots.
+          Supabase invite email was sent to <strong>{email}</strong>. The user will set a password and gain dashboard access.
         </Text>
+        <Text style={footer}>— FTFA Academy backend</Text>
       </Container>
     </Body>
   </Html>
@@ -25,12 +27,13 @@ const Email = ({ parentName, playerName, email }: Props) => (
 
 export const template = {
   component: Email,
-  subject: 'FTFA · Application approved & invite sent',
-  displayName: 'Admin: application approved',
+  subject: 'Invite sent — FTFA Academy',
+  displayName: 'Admin: invite sent',
   previewData: { parentName: 'Sara', playerName: 'Tim', email: 'sara@example.com' },
 } satisfies TemplateEntry
 
 const main = { backgroundColor: '#ffffff', fontFamily: 'Inter, Arial, sans-serif' }
 const container = { padding: '32px 28px', maxWidth: '560px' }
-const h1 = { fontSize: '22px', fontWeight: 700, color: '#0a0a0a', margin: '0 0 16px' }
-const text = { fontSize: '14px', color: '#0a0a0a', lineHeight: 1.55, margin: '0 0 14px' }
+const h1 = { fontSize: '24px', fontWeight: 700, color: '#0a0a0a', textTransform: 'uppercase' as const, letterSpacing: '0.02em', margin: '0 0 20px' }
+const text = { fontSize: '15px', color: '#0a0a0a', lineHeight: 1.55, margin: '0 0 16px' }
+const footer = { fontSize: '12px', color: '#999', margin: '24px 0 0' }
