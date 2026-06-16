@@ -47,10 +47,9 @@ const Applications = () => {
   const reject = async (a: Application) => {
     if (!confirm("Aanmelding afwijzen?")) return;
     await supabase.from("applications").update({ status: "rejected" }).eq("id", a.id);
-    void notify("application-decision", a.email, {
+    void notify("application-rejected", a.email, {
       parentName: a.parent_name,
       playerName: a.player_name,
-      approved: false,
     }, `app-reject-${a.id}`);
     void load();
   };
