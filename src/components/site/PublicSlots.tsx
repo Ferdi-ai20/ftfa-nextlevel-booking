@@ -11,6 +11,7 @@ import {
   hoursUntil,
 } from "@/lib/slots";
 import { notify, ADMIN_EMAIL } from "@/lib/notify";
+import { LoadingBlock, LoadingTimeoutFallback, useLoadingTimeout } from "@/components/LoadingState";
 
 type Slot = {
   id: string;
@@ -67,27 +68,45 @@ type GuestErrors = Partial<Record<keyof GuestForm, string>>;
 const PublicSlots = () => {
   const [slots, setSlots] = useState<Slot[]>([]);
   const [loaded, setLoaded] = useState(false);
+  const [retryKey, setRetryKey] = useState(0);
   const [active, setActive] = useState<Slot | null>(null);
+  const { timedOut, resetTimedOut } = useLoadingTimeout(!loaded);
 
   useEffect(() => {
-    supabase
-      .from("training_slots")
-      .select("id, date, start_time, end_time, training_type, max_players, location, player_note")
-      .eq("visibility", "public")
-      .eq("status", "open")
-      .gte("date", todayISO())
-      .order("date")
-      .order("start_time")
-      .then(({ data }) => {
+    setLoaded(false);
+    void (async () => {
+      try {
+        const { data, error } = await supabase
+          .from("training_slots")
+          .select("id, date, start_time, end_time, training_type, max_players, location, player_note")
+          .eq("visibility", "public")
+          .eq("status", "open")
+          .gte("date", todayISO())
+          .order("date")
+          .order("start_time");
+        if (error) throw error;
         const futureWithLead = (data ?? []).filter(
           (s) => hoursUntil(s.date, s.start_time) >= BOOKING_LEAD_HOURS,
         );
         setSlots(futureWithLead as Slot[]);
+      } catch (error) {
+        console.error("PublicSlots load failed", error);
+      } finally {
         setLoaded(true);
-      });
-  }, []);
+      }
+    })();
+  }, [retryKey]);
 
-  if (!loaded) return null;
+  const retryLoad = () => {
+    resetTimedOut();
+    setLoaded(false);
+    setRetryKey((key) => key + 1);
+  };
+
+  if (!loaded) {
+    if (timedOut) return <LoadingTimeoutFallback onRetry={retryLoad} />;
+    return <LoadingBlock />;
+  }
 
   return (
     <section id="proeftrainingen" className="py-24 md:py-32 border-b border-border">
