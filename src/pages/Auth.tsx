@@ -24,6 +24,7 @@ const Auth = () => {
 
   const submit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (busy) return;
     setBusy(true);
     try {
       const { error } = await supabase.auth.signInWithPassword({
@@ -31,8 +32,9 @@ const Auth = () => {
         password,
       });
       if (error) throw error;
+      // The redirect effect above will fire once useAuth resolves session + role.
     } catch (err: any) {
-      toast.error(err.message || "Inloggen mislukt.");
+      toast.error(err?.message || "Inloggen mislukt.");
     } finally {
       setBusy(false);
     }
