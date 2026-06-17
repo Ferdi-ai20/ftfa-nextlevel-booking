@@ -105,25 +105,32 @@ const Dashboard = () => {
   const loadAll = async () => {
     const today = new Date().toISOString().slice(0, 10);
     const uid = session!.user.id;
-    const [{ data: prof }, { data: ps }, { data: sl }, { data: bk }, { data: gl }, { data: hw }, { data: cn }] = await Promise.all([
-      supabase.from("profiles").select("full_name, phone, status").eq("id", uid).maybeSingle(),
-      supabase.from("players").select("id, player_name, birth_year, club, team, position").eq("parent_profile_id", uid),
-      supabase.from("training_slots").select("id, date, start_time, end_time, training_type, visibility, status, max_players, location, player_note")
-        .gte("date", today).eq("visibility", "private").eq("status", "open").order("date").order("start_time"),
-      supabase.from("bookings").select("id, slot_id, status, profile_id, player_id").eq("profile_id", uid),
-      supabase.from("player_goals").select("id, description, status, created_at").eq("profile_id", uid).order("created_at", { ascending: false }),
-      supabase.from("player_homework").select("id, title, description, video_url, due_date, status").eq("profile_id", uid).order("assigned_at", { ascending: false }),
-      supabase.from("player_coach_notes").select("id, note, created_at").eq("profile_id", uid).order("created_at", { ascending: false }),
-    ]);
-    setProfileName(prof?.full_name ?? "");
-    setProfilePhone(prof?.phone ?? "");
-    setProfileStatus(prof?.status ?? "pending");
-    setPlayers((ps ?? []) as Player[]);
-    setSlots((sl ?? []) as Slot[]);
-    setBookings((bk ?? []) as Booking[]);
-    setGoals((gl ?? []) as Goal[]);
-    setHomework((hw ?? []) as Homework[]);
-    setCoachNotes((cn ?? []) as CoachNote[]);
+    try {
+      const [{ data: prof }, { data: ps }, { data: sl }, { data: bk }, { data: gl }, { data: hw }, { data: cn }] = await Promise.all([
+        supabase.from("profiles").select("full_name, phone, status").eq("id", uid).maybeSingle(),
+        supabase.from("players").select("id, player_name, birth_year, club, team, position").eq("parent_profile_id", uid),
+        supabase.from("training_slots").select("id, date, start_time, end_time, training_type, visibility, status, max_players, location, player_note")
+          .gte("date", today).eq("visibility", "private").eq("status", "open").order("date").order("start_time"),
+        supabase.from("bookings").select("id, slot_id, status, profile_id, player_id").eq("profile_id", uid),
+        supabase.from("player_goals").select("id, description, status, created_at").eq("profile_id", uid).order("created_at", { ascending: false }),
+        supabase.from("player_homework").select("id, title, description, video_url, due_date, status").eq("profile_id", uid).order("assigned_at", { ascending: false }),
+        supabase.from("player_coach_notes").select("id, note, created_at").eq("profile_id", uid).order("created_at", { ascending: false }),
+      ]);
+      setProfileName(prof?.full_name ?? "");
+      setProfilePhone(prof?.phone ?? "");
+      setProfileStatus(prof?.status ?? "pending");
+      setPlayers((ps ?? []) as Player[]);
+      setSlots((sl ?? []) as Slot[]);
+      setBookings((bk ?? []) as Booking[]);
+      setGoals((gl ?? []) as Goal[]);
+      setHomework((hw ?? []) as Homework[]);
+      setCoachNotes((cn ?? []) as CoachNote[]);
+    } catch (e) {
+      console.error("Dashboard loadAll failed", e);
+      setProfileStatus("pending");
+    } finally {
+      setDataLoaded(true);
+    }
   };
 
   const book = async (s: Slot) => {
