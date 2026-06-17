@@ -108,7 +108,7 @@ const Dashboard = () => {
     const today = new Date().toISOString().slice(0, 10);
     const uid = session!.user.id;
     try {
-      const [{ data: prof }, { data: ps }, { data: sl }, { data: bk }, { data: gl }, { data: hw }, { data: cn }] = await Promise.all([
+      const [profRes, playersRes, slotsRes, bookingsRes, goalsRes, homeworkRes, notesRes] = await Promise.all([
         supabase.from("profiles").select("full_name, phone, status").eq("id", uid).maybeSingle(),
         supabase.from("players").select("id, player_name, birth_year, club, team, position").eq("parent_profile_id", uid),
         supabase.from("training_slots").select("id, date, start_time, end_time, training_type, visibility, status, max_players, location, player_note")
@@ -118,6 +118,15 @@ const Dashboard = () => {
         supabase.from("player_homework").select("id, title, description, video_url, due_date, status").eq("profile_id", uid).order("assigned_at", { ascending: false }),
         supabase.from("player_coach_notes").select("id, note, created_at").eq("profile_id", uid).order("created_at", { ascending: false }),
       ]);
+      const firstError = [profRes.error, playersRes.error, slotsRes.error, bookingsRes.error, goalsRes.error, homeworkRes.error, notesRes.error].find(Boolean);
+      if (firstError) throw firstError;
+      const { data: prof } = profRes;
+      const { data: ps } = playersRes;
+      const { data: sl } = slotsRes;
+      const { data: bk } = bookingsRes;
+      const { data: gl } = goalsRes;
+      const { data: hw } = homeworkRes;
+      const { data: cn } = notesRes;
       setProfileName(prof?.full_name ?? "");
       setProfilePhone(prof?.phone ?? "");
       setProfileStatus(prof?.status ?? "pending");
