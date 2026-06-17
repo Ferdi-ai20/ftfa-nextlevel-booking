@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { fmtDate, fmtTime, trainingTypeLabel, TrainingType, BookingStatus } from "@/lib/slots";
+import { LoadingBlock, LoadingTimeoutFallback, useLoadingTimeout } from "@/components/LoadingState";
 
 type Row = {
   id: string;
@@ -52,25 +53,39 @@ const Bookings = () => {
   const [filter, setFilter] = useState<"upcoming" | "past" | "cancelled" | "all">("upcoming");
   const [search, setSearch] = useState("");
   const [loading, setLoading] = useState(true);
+  const [retryKey, setRetryKey] = useState(0);
+  const { timedOut, resetTimedOut } = useLoadingTimeout(loading);
   
 
-  useEffect(() => { void load(); }, []);
+  useEffect(() => { void load(); }, [retryKey]);
 
   const load = async () => {
     setLoading(true);
-    const { data, error } = await supabase
-      .from("bookings")
-      .select(`
-        id, status, guest_name, guest_email, guest_phone, guest_parent_name,
-        guest_dob, guest_birth_year, guest_club, guest_team, guest_position,
-        profile_id, created_at, cancelled_at, cancelled_by,
-        training_slots ( id, date, start_time, end_time, training_type, visibility, location ),
-        profiles:profile_id ( full_name, phone, sticky_note )
-      `)
-      .order("created_at", { ascending: false });
-    setLoading(false);
-    if (error) return toast.error(error.message);
-    setRows((data ?? []) as any);
+    try {
+      const { data, error } = await supabase
+        .from("bookings")
+        .select(`
+          id, status, guest_name, guest_email, guest_phone, guest_parent_name,
+          guest_dob, guest_birth_year, guest_club, guest_team, guest_position,
+          profile_id, created_at, cancelled_at, cancelled_by,
+          training_slots ( id, date, start_time, end_time, training_type, visibility, location ),
+          profiles:profile_id ( full_name, phone, sticky_note )
+        `)
+        .order("created_at", { ascending: false });
+      if (error) throw error;
+      setRows((data ?? []) as any);
+    } catch (error) {
+      console.error("Bookings load failed", error);
+      toast.error(error instanceof Error ? error.message : "Bookings laden mislukt");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const retryLoad = () => {
+    resetTimedOut();
+    setLoading(true);
+    setRetryKey((key) => key + 1);
   };
 
   const cancel = async (r: Row) => {
@@ -125,7 +140,7 @@ const Bookings = () => {
       </header>
 
       {loading ? (
-        <div className="border border-border p-6 text-sm text-muted-foreground">Loading…</div>
+        timedOut ? <LoadingTimeoutFallback onRetry={retryLoad} /> : <LoadingBlock />
       ) : filtered.length === 0 ? (
         <div className="border border-border p-6 text-sm text-muted-foreground">No bookings found.</div>
       ) : (
