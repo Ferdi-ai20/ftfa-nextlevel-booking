@@ -234,8 +234,14 @@ const Dashboard = () => {
     .sort((a, b) => (a.s.date + a.s.start_time).localeCompare(b.s.date + b.s.start_time)),
     [bookings, slots]);
 
-  if (loading) return <div className="min-h-screen grid place-items-center bg-background text-foreground">Laden…</div>;
-  if (!session || isAdmin || profileStatus !== "active") return null;
+  if (loading || (session && !isAdmin && !dataLoaded)) {
+    return <div className="min-h-screen grid place-items-center bg-background text-foreground">Laden…</div>;
+  }
+  if (!session || isAdmin) return null;
+  if (profileStatus !== "active") {
+    // Redirect effect is firing; show loader instead of blank screen
+    return <div className="min-h-screen grid place-items-center bg-background text-foreground">Laden…</div>;
+  }
 
   return (
     <main className="min-h-screen bg-background text-foreground">
