@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
+import { LoadingBlock, LoadingTimeoutFallback, useLoadingTimeout } from "@/components/LoadingState";
 
 const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL as string;
 
@@ -9,12 +10,35 @@ const Settings = () => {
   const { user } = useAuth();
   const [token, setToken] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+  const [loading, setLoading] = useState(true);
+  const [retryKey, setRetryKey] = useState(0);
+  const { timedOut, resetTimedOut } = useLoadingTimeout(loading);
 
   useEffect(() => {
-    if (!user) return;
-    supabase.from("ical_tokens").select("token").eq("user_id", user.id).maybeSingle()
-      .then(({ data }) => setToken(data?.token ?? null));
-  }, [user]);
+    if (!user) {
+      setLoading(false);
+      return;
+    }
+    setLoading(true);
+    void (async () => {
+      try {
+        const { data, error } = await supabase.from("ical_tokens").select("token").eq("user_id", user.id).maybeSingle();
+        if (error) throw error;
+        setToken(data?.token ?? null);
+      } catch (error) {
+        console.error("Settings token load failed", error);
+        toast.error(error instanceof Error ? error.message : "Instellingen laden mislukt");
+      } finally {
+        setLoading(false);
+      }
+    })();
+  }, [user, retryKey]);
+
+  const retryLoad = () => {
+    resetTimedOut();
+    setLoading(true);
+    setRetryKey((key) => key + 1);
+  };
 
   const generate = async () => {
     if (!user) return;
@@ -59,7 +83,9 @@ const Settings = () => {
           </p>
         </div>
 
-        {token ? (
+        {loading ? (
+          timedOut ? <LoadingTimeoutFallback onRetry={retryLoad} /> : <LoadingBlock />
+        ) : token ? (
           <>
             <div className="bg-background border border-border p-3 text-xs font-mono break-all">{url}</div>
             <div className="flex gap-2 flex-wrap">
