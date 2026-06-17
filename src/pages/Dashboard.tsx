@@ -4,6 +4,7 @@ import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { notify, ADMIN_EMAIL } from "@/lib/notify";
+import { LoadingBlock, LoadingTimeoutFallback, useLoadingTimeout } from "@/components/LoadingState";
 import {
   TrainingType,
   SlotVisibility,
@@ -80,6 +81,7 @@ const Dashboard = () => {
   const [profilePhone, setProfilePhone] = useState("");
   const [profileStatus, setProfileStatus] = useState<string | null>(null);
   const [dataLoaded, setDataLoaded] = useState(false);
+  const [retryKey, setRetryKey] = useState(0);
   const [filter, setFilter] = useState<"all" | TrainingType>("all");
   const [busy, setBusy] = useState<string | null>(null);
   const [cancelTarget, setCancelTarget] = useState<{ b: Booking; s: Slot } | null>(null);
@@ -93,7 +95,7 @@ const Dashboard = () => {
   useEffect(() => {
     if (!session || isAdmin) return;
     void loadAll();
-  }, [session, isAdmin]);
+  }, [session, isAdmin, retryKey]);
 
   // Redirect to pending screen if not active
   useEffect(() => {
@@ -131,6 +133,14 @@ const Dashboard = () => {
     } finally {
       setDataLoaded(true);
     }
+  };
+
+  const isPageWaiting = loading || Boolean(session && !isAdmin && (!dataLoaded || profileStatus !== "active"));
+  const { timedOut, resetTimedOut } = useLoadingTimeout(isPageWaiting);
+  const retryLoad = () => {
+    resetTimedOut();
+    setDataLoaded(false);
+    setRetryKey((key) => key + 1);
   };
 
   const book = async (s: Slot) => {
@@ -235,12 +245,14 @@ const Dashboard = () => {
     [bookings, slots]);
 
   if (loading || (session && !isAdmin && !dataLoaded)) {
-    return <div className="min-h-screen grid place-items-center bg-background text-foreground">Laden…</div>;
+    if (timedOut) return <LoadingTimeoutFallback onRetry={retryLoad} fullScreen />;
+    return <LoadingBlock fullScreen />;
   }
   if (!session || isAdmin) return null;
   if (profileStatus !== "active") {
     // Redirect effect is firing; show loader instead of blank screen
-    return <div className="min-h-screen grid place-items-center bg-background text-foreground">Laden…</div>;
+    if (timedOut) return <LoadingTimeoutFallback onRetry={retryLoad} fullScreen />;
+    return <LoadingBlock fullScreen />;
   }
 
   return (
