@@ -78,7 +78,8 @@ const Dashboard = () => {
   const [coachNotes, setCoachNotes] = useState<CoachNote[]>([]);
   const [profileName, setProfileName] = useState("");
   const [profilePhone, setProfilePhone] = useState("");
-  const [profileStatus, setProfileStatus] = useState<string>("pending");
+  const [profileStatus, setProfileStatus] = useState<string | null>(null);
+  const [dataLoaded, setDataLoaded] = useState(false);
   const [filter, setFilter] = useState<"all" | TrainingType>("all");
   const [busy, setBusy] = useState<string | null>(null);
   const [cancelTarget, setCancelTarget] = useState<{ b: Booking; s: Slot } | null>(null);
