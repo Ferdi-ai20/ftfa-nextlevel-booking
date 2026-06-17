@@ -1,28 +1,29 @@
-# Favicon vervangen met nieuw FTFA-logo
+## Admin Bookings — show full guest details
 
-## Probleem
-De browsertab toont nog het oude FT-shield logo uit de WordPress-tijd, omdat `public/favicon.ico` nog het oude bestand is en er geen expliciete favicon-link in `index.html` staat.
+Single-file change in `src/pages/admin/Bookings.tsx`. All needed columns already exist in `bookings` and are readable by admins; no DB/RLS/edge function changes.
 
-## Aanpak
+### Changes
 
-1. **Favicon-bestand vervangen**
-   - Het uploaded logo (`BB008121-9121-4E3A-8277-7B0DE29E8680.png`) is breed met veel zwarte ruimte eromheen — als favicon (16×16 / 32×32 px) wordt de tekst onleesbaar klein.
-   - Crop het logo naar een vierkant frame rond de "FTFA" tekst (met wat padding) zodat het herkenbaar blijft op klein formaat.
-   - Schrijf het resultaat naar `public/favicon.png` (vierkant, ~512×512).
-   - Verwijder de oude `public/favicon.ico` zodat browsers niet automatisch terugvallen op het oude shield.
+1. **Extend `Row` type and `.select(...)`** to include:
+   `guest_parent_name, guest_dob, guest_birth_year, guest_club, guest_team, guest_position`.
 
-2. **`index.html` updaten**
-   - Voeg expliciete favicon-links toe in `<head>`:
-     ```html
-     <link rel="icon" type="image/png" href="/favicon.png" />
-     <link rel="apple-touch-icon" href="/favicon.png" />
-     ```
+2. **Widen the search blob** so admin can also search by phone, club, team, and player name (not only guest name + email).
 
-## Belangrijk om te weten
-- **Browser-cache:** Safari/Chrome cachen favicons agressief. Zelfs na deze update kan het oude logo nog enkele uren of dagen in je tab-switcher staan tot de cache vervalt. Hard refresh (Cmd+Shift+R) of de tab sluiten en opnieuw openen helpt meestal.
-- **Tab-switcher screenshot:** de afbeelding die je deelde komt uit Safari's tab-overzicht — dat is een gecachete preview van toen je de pagina voor het laatst bezocht. Die preview update pas als je de pagina opnieuw laadt.
+3. **Add an expandable "Details" toggle per row** (chevron button on the right, next to the status badge). Collapsed view stays exactly as it is today — date, slot, who, contact, sticky note, status, Cancel.
 
-## Bestanden
-- `public/favicon.png` (nieuw)
-- `public/favicon.ico` (verwijderen)
-- `index.html` (favicon-links toevoegen)
+   Expanded view renders a small 2-column grid (English labels). Each field is hidden if empty.
+
+   **For guest bookings:**
+   - Parent name (`guest_parent_name`)
+   - Player name (parsed from `guest_name` "X (ouder van Y)", fall back to `guest_parent_name`)
+   - Date of birth (`guest_dob`, formatted DD-MM-YYYY; falls back to `guest_birth_year`)
+   - Phone (`guest_phone`)
+   - Club (`guest_club`)
+   - Team (`guest_team`)
+   - Position (`guest_position`)
+
+   **For player bookings:** show linked profile's phone + sticky note (or hide the expander entirely if nothing extra to show, since those are already inline).
+
+4. Use existing tokens (`text-muted-foreground`, `border-border`, `bg-card`) — no hardcoded colors.
+
+No other files touched.
