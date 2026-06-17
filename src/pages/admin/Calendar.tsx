@@ -49,7 +49,14 @@ const startOfWeek = (d: Date) => {
   x.setHours(0, 0, 0, 0);
   return x;
 };
-const isoDay = (d: Date) => d.toISOString().slice(0, 10);
+// Format a local-time Date as YYYY-MM-DD without going through UTC (toISOString shifts the
+// date by one in negative-or-positive offset zones — caused Friday slots to render on Saturday).
+const isoDay = (d: Date) => {
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, "0");
+  const day = String(d.getDate()).padStart(2, "0");
+  return `${y}-${m}-${day}`;
+};
 const addDays = (d: Date, n: number) => {
   const x = new Date(d);
   x.setDate(x.getDate() + n);
