@@ -55,6 +55,7 @@ export type Database = {
           birth_year: number | null
           club: string | null
           created_at: string
+          dob: string | null
           email: string
           goal: string | null
           id: string
@@ -71,6 +72,7 @@ export type Database = {
           birth_year?: number | null
           club?: string | null
           created_at?: string
+          dob?: string | null
           email: string
           goal?: string | null
           id?: string
@@ -87,6 +89,7 @@ export type Database = {
           birth_year?: number | null
           club?: string | null
           created_at?: string
+          dob?: string | null
           email?: string
           goal?: string | null
           id?: string

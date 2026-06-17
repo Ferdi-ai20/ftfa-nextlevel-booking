@@ -204,26 +204,9 @@ const GuestBookingModal = ({ slot, onClose }: { slot: Slot; onClose: () => void 
       return;
     }
 
-    // Show success screen FIRST, then fire emails + auto-application (best-effort)
+    // Show success screen FIRST, then fire emails (application is created by DB trigger)
     setSubmitted(true);
     setBusy(false);
-
-    try {
-      const { error: appErr } = await supabase.rpc("ensure_application_for_guest", {
-        _email: d.email,
-        _parent_name: d.parent_name,
-        _player_name: d.player_name,
-        _dob: d.player_dob,
-        _club: d.club,
-        _team: d.team,
-        _position: d.position,
-        _phone: d.phone,
-        _notes: `Auto-aangemaakt vanuit open boeking ${fmtDate(slot.date)} ${fmtTime(slot.start_time)}`,
-      });
-      if (appErr) console.error("ensure_application_for_guest failed", appErr);
-    } catch (e) {
-      console.error("ensure_application_for_guest threw", e);
-    }
 
     void notify(
       "booking-confirmed",
