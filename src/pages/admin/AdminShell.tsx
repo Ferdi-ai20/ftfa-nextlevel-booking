@@ -2,6 +2,7 @@ import { NavLink, Outlet, useNavigate, Link } from "react-router-dom";
 import { useEffect, useState } from "react";
 import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
+import { LoadingBlock, LoadingTimeoutFallback, useLoadingTimeout } from "@/components/LoadingState";
 
 const links = [
   { to: "/admin", end: true, label: "Calendar" },
@@ -17,6 +18,11 @@ const AdminShell = () => {
   const { session, isAdmin, loading, signOut } = useAuth();
   const navigate = useNavigate();
   const [pendingApps, setPendingApps] = useState(0);
+  const { timedOut, resetTimedOut } = useLoadingTimeout(loading);
+  const retryLoading = () => {
+    resetTimedOut();
+    window.location.reload();
+  };
 
   useEffect(() => {
     if (!loading && !session) navigate("/auth?redirect=/admin", { replace: true });
@@ -36,7 +42,10 @@ const AdminShell = () => {
     return () => clearInterval(interval);
   }, [isAdmin]);
 
-  if (loading) return <div className="min-h-screen grid place-items-center bg-background">Loading…</div>;
+  if (loading) {
+    if (timedOut) return <LoadingTimeoutFallback onRetry={retryLoading} fullScreen />;
+    return <LoadingBlock fullScreen />;
+  }
   if (!session) return null;
 
   if (!isAdmin) {

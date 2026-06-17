@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { notify } from "@/lib/notify";
+import { LoadingBlock, LoadingTimeoutFallback, useLoadingTimeout } from "@/components/LoadingState";
 
 type Application = {
   id: string;
@@ -22,14 +23,32 @@ type Application = {
 const Applications = () => {
   const [apps, setApps] = useState<Application[]>([]);
   const [filter, setFilter] = useState<"pending" | "approved" | "rejected" | "all">("pending");
+  const [loading, setLoading] = useState(true);
+  const [retryKey, setRetryKey] = useState(0);
+  const { timedOut, resetTimedOut } = useLoadingTimeout(loading);
 
   useEffect(() => {
     void load();
-  }, []);
+  }, [retryKey]);
 
   const load = async () => {
-    const { data } = await supabase.from("applications").select("*").order("created_at", { ascending: false });
-    setApps((data ?? []) as Application[]);
+    setLoading(true);
+    try {
+      const { data, error } = await supabase.from("applications").select("*").order("created_at", { ascending: false });
+      if (error) throw error;
+      setApps((data ?? []) as Application[]);
+    } catch (error) {
+      console.error("Applications load failed", error);
+      toast.error(error instanceof Error ? error.message : "Aanmeldingen laden mislukt");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const retryLoad = () => {
+    resetTimedOut();
+    setLoading(true);
+    setRetryKey((key) => key + 1);
   };
 
   const approve = async (a: Application) => {
@@ -83,8 +102,9 @@ const Applications = () => {
       </header>
 
       <div className="space-y-3">
-        {filtered.length === 0 && <div className="border border-border bg-card p-6 text-sm text-muted-foreground">Geen aanmeldingen.</div>}
-        {filtered.map((a) => (
+        {loading && (timedOut ? <LoadingTimeoutFallback onRetry={retryLoad} /> : <LoadingBlock />)}
+        {!loading && filtered.length === 0 && <div className="border border-border bg-card p-6 text-sm text-muted-foreground">Geen aanmeldingen.</div>}
+        {!loading && filtered.map((a) => (
           <div key={a.id} className="border border-border bg-card p-5">
             <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4">
               <div className="min-w-0">

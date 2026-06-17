@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { notify, ADMIN_EMAIL } from "@/lib/notify";
+import { LoadingBlock, LoadingTimeoutFallback, useLoadingTimeout } from "@/components/LoadingState";
 import {
   TRAINING_TYPES,
   TrainingType,
@@ -92,6 +93,8 @@ const Calendar = () => {
   const [cursor, setCursor] = useState<Date>(new Date());
   const [slots, setSlots] = useState<Slot[]>([]);
   const [bookings, setBookings] = useState<Booking[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [retryKey, setRetryKey] = useState(0);
   const [creating, setCreating] = useState<null | { date: string }>(null);
   const [editing, setEditing] = useState<Slot | null>(null);
   const [form, setForm] = useState(emptyForm);
@@ -110,28 +113,41 @@ const Calendar = () => {
   useEffect(() => {
     void load();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [range.from.toISOString(), range.to.toISOString()]);
+  }, [range.from.toISOString(), range.to.toISOString(), retryKey]);
 
   const load = async () => {
-    const { data: s, error } = await supabase
-      .from("training_slots")
-      .select("id, date, start_time, end_time, training_type, visibility, status, max_players, location, admin_note, player_note")
-      .gte("date", isoDay(range.from))
-      .lt("date", isoDay(range.to))
-      .order("date")
-      .order("start_time");
-    if (error) {
-      toast.error(error.message);
-      return;
+    setLoading(true);
+    try {
+      const { data: s, error } = await supabase
+        .from("training_slots")
+        .select("id, date, start_time, end_time, training_type, visibility, status, max_players, location, admin_note, player_note")
+        .gte("date", isoDay(range.from))
+        .lt("date", isoDay(range.to))
+        .order("date")
+        .order("start_time");
+      if (error) throw error;
+      setSlots((s ?? []) as Slot[]);
+      if (s && s.length) {
+        const ids = s.map((x) => x.id);
+        const { data: b, error: bookingError } = await supabase.from("bookings").select("id, slot_id, status, guest_name, guest_email, guest_phone, profile_id, player_id").in("slot_id", ids);
+        if (bookingError) throw bookingError;
+        setBookings((b ?? []) as Booking[]);
+      } else {
+        setBookings([]);
+      }
+    } catch (error) {
+      console.error("Calendar load failed", error);
+      toast.error(error instanceof Error ? error.message : "Calendar laden mislukt");
+    } finally {
+      setLoading(false);
     }
-    setSlots((s ?? []) as Slot[]);
-    if (s && s.length) {
-      const ids = s.map((x) => x.id);
-      const { data: b } = await supabase.from("bookings").select("id, slot_id, status, guest_name, guest_email, guest_phone, profile_id, player_id").in("slot_id", ids);
-      setBookings((b ?? []) as Booking[]);
-    } else {
-      setBookings([]);
-    }
+  };
+
+  const { timedOut, resetTimedOut } = useLoadingTimeout(loading);
+  const retryLoad = () => {
+    resetTimedOut();
+    setLoading(true);
+    setRetryKey((key) => key + 1);
   };
 
   const countFor = (slotId: string) =>
@@ -295,7 +311,9 @@ const Calendar = () => {
         </div>
       </header>
 
-      {view === "month" ? (
+      {loading ? (
+        timedOut ? <LoadingTimeoutFallback onRetry={retryLoad} /> : <LoadingBlock />
+      ) : view === "month" ? (
         <MonthGrid cursor={cursor} slotsByDay={slotsByDay} countFor={countFor} onDay={(d) => openCreate(d)} onSlot={openEdit} />
       ) : view === "week" ? (
         <WeekGrid from={startOfWeek(cursor)} slotsByDay={slotsByDay} countFor={countFor} onDay={openCreate} onSlot={openEdit} />

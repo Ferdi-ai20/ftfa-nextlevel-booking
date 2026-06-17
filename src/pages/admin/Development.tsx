@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { fmtDate } from "@/lib/slots";
+import { LoadingBlock, LoadingTimeoutFallback, useLoadingTimeout } from "@/components/LoadingState";
 
 type Profile = { id: string; full_name: string | null; phone: string | null; status: string };
 type Goal = { id: string; profile_id: string; description: string; status: string; created_at: string };
@@ -18,24 +19,61 @@ const Development = () => {
   const [newGoal, setNewGoal] = useState("");
   const [hwForm, setHwForm] = useState({ title: "", description: "", video_url: "", due_date: "" });
   const [newNote, setNewNote] = useState("");
+  const [profilesLoading, setProfilesLoading] = useState(true);
+  const [dataLoading, setDataLoading] = useState(false);
+  const [retryKey, setRetryKey] = useState(0);
+  const [dataRetryKey, setDataRetryKey] = useState(0);
+  const { timedOut: profilesTimedOut, resetTimedOut: resetProfilesTimedOut } = useLoadingTimeout(profilesLoading);
+  const { timedOut: dataTimedOut, resetTimedOut: resetDataTimedOut } = useLoadingTimeout(dataLoading);
 
-  useEffect(() => { void loadProfiles(); }, []);
-  useEffect(() => { if (selected) void loadData(selected); }, [selected]);
+  useEffect(() => { void loadProfiles(); }, [retryKey]);
+  useEffect(() => { if (selected) void loadData(selected); }, [selected, dataRetryKey]);
 
   const loadProfiles = async () => {
-    const { data } = await supabase.from("profiles").select("id, full_name, phone, status").eq("status", "active").order("full_name");
-    setProfiles((data ?? []) as Profile[]);
+    setProfilesLoading(true);
+    try {
+      const { data, error } = await supabase.from("profiles").select("id, full_name, phone, status").eq("status", "active").order("full_name");
+      if (error) throw error;
+      setProfiles((data ?? []) as Profile[]);
+    } catch (error) {
+      console.error("Development profiles load failed", error);
+      toast.error(error instanceof Error ? error.message : "Spelers laden mislukt");
+    } finally {
+      setProfilesLoading(false);
+    }
   };
 
   const loadData = async (pid: string) => {
-    const [{ data: g }, { data: h }, { data: n }] = await Promise.all([
-      supabase.from("player_goals").select("*").eq("profile_id", pid).order("created_at", { ascending: false }),
-      supabase.from("player_homework").select("*").eq("profile_id", pid).order("assigned_at", { ascending: false }),
-      supabase.from("player_coach_notes").select("*").eq("profile_id", pid).order("created_at", { ascending: false }),
-    ]);
-    setGoals((g ?? []) as Goal[]);
-    setHomework((h ?? []) as Homework[]);
-    setNotes((n ?? []) as Note[]);
+    setDataLoading(true);
+    try {
+      const [{ data: g, error: goalsError }, { data: h, error: homeworkError }, { data: n, error: notesError }] = await Promise.all([
+        supabase.from("player_goals").select("*").eq("profile_id", pid).order("created_at", { ascending: false }),
+        supabase.from("player_homework").select("*").eq("profile_id", pid).order("assigned_at", { ascending: false }),
+        supabase.from("player_coach_notes").select("*").eq("profile_id", pid).order("created_at", { ascending: false }),
+      ]);
+      if (goalsError) throw goalsError;
+      if (homeworkError) throw homeworkError;
+      if (notesError) throw notesError;
+      setGoals((g ?? []) as Goal[]);
+      setHomework((h ?? []) as Homework[]);
+      setNotes((n ?? []) as Note[]);
+    } catch (error) {
+      console.error("Development data load failed", error);
+      toast.error(error instanceof Error ? error.message : "Ontwikkeling laden mislukt");
+    } finally {
+      setDataLoading(false);
+    }
+  };
+
+  const retryProfiles = () => {
+    resetProfilesTimedOut();
+    setProfilesLoading(true);
+    setRetryKey((key) => key + 1);
+  };
+  const retryData = () => {
+    resetDataTimedOut();
+    setDataLoading(true);
+    setDataRetryKey((key) => key + 1);
   };
 
   const addGoal = async () => {
@@ -100,8 +138,9 @@ const Development = () => {
 
       <div className="grid md:grid-cols-[260px_1fr] gap-6">
         <aside className="border border-border bg-card divide-y divide-border max-h-[70vh] overflow-auto">
-          {profiles.length === 0 && <div className="p-4 text-xs text-muted-foreground">Geen active players.</div>}
-          {profiles.map((p) => (
+          {profilesLoading && (profilesTimedOut ? <LoadingTimeoutFallback onRetry={retryProfiles} /> : <LoadingBlock />)}
+          {!profilesLoading && profiles.length === 0 && <div className="p-4 text-xs text-muted-foreground">Geen active players.</div>}
+          {!profilesLoading && profiles.map((p) => (
             <button
               key={p.id}
               onClick={() => setSelected(p.id)}
@@ -117,7 +156,9 @@ const Development = () => {
           {!selected ? (
             <div className="border border-border p-6 text-sm text-muted-foreground">Kies een speler links.</div>
           ) : (
-            <>
+            dataLoading ? (
+              dataTimedOut ? <LoadingTimeoutFallback onRetry={retryData} /> : <LoadingBlock />
+            ) : <>
               <section>
                 <h2 className="display-font text-xl uppercase mb-3">Doelen</h2>
                 <div className="flex gap-2 mb-3">

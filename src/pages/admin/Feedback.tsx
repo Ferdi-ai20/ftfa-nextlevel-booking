@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { fmtDate, fmtTime } from "@/lib/slots";
+import { LoadingBlock, LoadingTimeoutFallback, useLoadingTimeout } from "@/components/LoadingState";
 
 type FB = {
   id: string;
@@ -21,6 +22,9 @@ const Feedback = () => {
   const [players, setPlayers] = useState<Player[]>([]);
   const [slots, setSlots] = useState<Slot[]>([]);
   const [items, setItems] = useState<FB[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [retryKey, setRetryKey] = useState(0);
+  const { timedOut, resetTimedOut } = useLoadingTimeout(loading);
   const [form, setForm] = useState({
     player_id: "",
     slot_id: "",
@@ -32,17 +36,34 @@ const Feedback = () => {
 
   useEffect(() => {
     void load();
-  }, []);
+  }, [retryKey]);
 
   const load = async () => {
-    const [{ data: p }, { data: s }, { data: f }] = await Promise.all([
-      supabase.from("players").select("id, player_name").eq("status", "active").order("player_name"),
-      supabase.from("training_slots").select("id, date, start_time").order("date", { ascending: false }).limit(100),
-      supabase.from("feedback").select("*").order("created_at", { ascending: false }).limit(100),
-    ]);
-    setPlayers((p ?? []) as Player[]);
-    setSlots((s ?? []) as Slot[]);
-    setItems((f ?? []) as FB[]);
+    setLoading(true);
+    try {
+      const [{ data: p, error: playersError }, { data: s, error: slotsError }, { data: f, error: feedbackError }] = await Promise.all([
+        supabase.from("players").select("id, player_name").eq("status", "active").order("player_name"),
+        supabase.from("training_slots").select("id, date, start_time").order("date", { ascending: false }).limit(100),
+        supabase.from("feedback").select("*").order("created_at", { ascending: false }).limit(100),
+      ]);
+      if (playersError) throw playersError;
+      if (slotsError) throw slotsError;
+      if (feedbackError) throw feedbackError;
+      setPlayers((p ?? []) as Player[]);
+      setSlots((s ?? []) as Slot[]);
+      setItems((f ?? []) as FB[]);
+    } catch (error) {
+      console.error("Feedback load failed", error);
+      toast.error(error instanceof Error ? error.message : "Feedback laden mislukt");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const retryLoad = () => {
+    resetTimedOut();
+    setLoading(true);
+    setRetryKey((key) => key + 1);
   };
 
   const save = async () => {
@@ -127,8 +148,9 @@ const Feedback = () => {
       </div>
 
       <div className="space-y-2">
-        {items.length === 0 && <div className="border border-border bg-card p-6 text-sm text-muted-foreground">Nog geen feedback.</div>}
-        {items.map((f) => (
+        {loading && (timedOut ? <LoadingTimeoutFallback onRetry={retryLoad} /> : <LoadingBlock />)}
+        {!loading && items.length === 0 && <div className="border border-border bg-card p-6 text-sm text-muted-foreground">Nog geen feedback.</div>}
+        {!loading && items.map((f) => (
           <div key={f.id} className="border border-border bg-card p-4">
             <div className="flex items-start justify-between gap-3">
               <div className="min-w-0">

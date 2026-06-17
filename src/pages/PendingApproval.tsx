@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { useNavigate, Link } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
+import { LoadingBlock, LoadingTimeoutFallback, useLoadingTimeout } from "@/components/LoadingState";
 
 const PendingApproval = () => {
   const { session, isAdmin, loading, signOut } = useAuth();
@@ -9,6 +10,8 @@ const PendingApproval = () => {
   const [status, setStatus] = useState<string>("pending");
   const [name, setName] = useState("");
   const [checking, setChecking] = useState(true);
+  const [retryKey, setRetryKey] = useState(0);
+  const { timedOut, resetTimedOut } = useLoadingTimeout(loading || checking);
 
   useEffect(() => {
     if (!loading && !session) {
@@ -20,25 +23,39 @@ const PendingApproval = () => {
       return;
     }
     if (session) {
+      setChecking(true);
       void (async () => {
-        const { data } = await supabase
-          .from("profiles")
-          .select("full_name, status")
-          .eq("id", session.user.id)
-          .maybeSingle();
-        if (data?.status === "active") {
-          navigate("/dashboard", { replace: true });
-          return;
+        try {
+          const { data, error } = await supabase
+            .from("profiles")
+            .select("full_name, status")
+            .eq("id", session.user.id)
+            .maybeSingle();
+          if (error) throw error;
+          if (data?.status === "active") {
+            navigate("/dashboard", { replace: true });
+            return;
+          }
+          setStatus(data?.status ?? "pending");
+          setName(data?.full_name ?? "");
+        } catch (error) {
+          console.error("PendingApproval profile check failed", error);
+        } finally {
+          setChecking(false);
         }
-        setStatus(data?.status ?? "pending");
-        setName(data?.full_name ?? "");
-        setChecking(false);
       })();
     }
-  }, [session, isAdmin, loading, navigate]);
+  }, [session, isAdmin, loading, navigate, retryKey]);
+
+  const retry = () => {
+    resetTimedOut();
+    setChecking(true);
+    setRetryKey((key) => key + 1);
+  };
 
   if (loading || checking) {
-    return <div className="min-h-screen grid place-items-center bg-background text-foreground">Laden…</div>;
+    if (timedOut) return <LoadingTimeoutFallback onRetry={retry} fullScreen />;
+    return <LoadingBlock fullScreen />;
   }
 
   const rejected = status === "rejected";

@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
+import { LoadingBlock, LoadingTimeoutFallback, useLoadingTimeout } from "@/components/LoadingState";
 
 type Profile = {
   id: string;
@@ -41,19 +42,38 @@ const Players = () => {
   const [form, setForm] = useState(empty);
   const [stickyDraft, setStickyDraft] = useState<Record<string, string>>({});
   const [stickyOpen, setStickyOpen] = useState<string | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [retryKey, setRetryKey] = useState(0);
+  const { timedOut, resetTimedOut } = useLoadingTimeout(loading);
 
-  useEffect(() => { void load(); }, []);
+  useEffect(() => { void load(); }, [retryKey]);
 
   const load = async () => {
-    const [{ data: p }, { data: pr }] = await Promise.all([
-      supabase.from("players").select("*").order("player_name"),
-      supabase.from("profiles").select("id, full_name, phone, status, sticky_note"),
-    ]);
-    setPlayers((p ?? []) as Player[]);
-    setProfiles((pr ?? []) as Profile[]);
-    const d: Record<string, string> = {};
-    (pr ?? []).forEach((x: any) => { d[x.id] = x.sticky_note ?? ""; });
-    setStickyDraft(d);
+    setLoading(true);
+    try {
+      const [{ data: p, error: playersError }, { data: pr, error: profilesError }] = await Promise.all([
+        supabase.from("players").select("*").order("player_name"),
+        supabase.from("profiles").select("id, full_name, phone, status, sticky_note"),
+      ]);
+      if (playersError) throw playersError;
+      if (profilesError) throw profilesError;
+      setPlayers((p ?? []) as Player[]);
+      setProfiles((pr ?? []) as Profile[]);
+      const d: Record<string, string> = {};
+      (pr ?? []).forEach((x: any) => { d[x.id] = x.sticky_note ?? ""; });
+      setStickyDraft(d);
+    } catch (error) {
+      console.error("Players load failed", error);
+      toast.error(error instanceof Error ? error.message : "Spelers laden mislukt");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const retryLoad = () => {
+    resetTimedOut();
+    setLoading(true);
+    setRetryKey((key) => key + 1);
   };
 
   const profileFor = (id: string) => profiles.find((x) => x.id === id);
@@ -150,6 +170,9 @@ const Players = () => {
         </div>
       </header>
 
+      {loading ? (
+        timedOut ? <LoadingTimeoutFallback onRetry={retryLoad} /> : <LoadingBlock />
+      ) : (
       <div className="border border-border bg-card divide-y divide-border">
         {filtered.length === 0 && <div className="p-6 text-sm text-muted-foreground">Geen spelers.</div>}
         {filtered.map((p) => {
@@ -204,6 +227,7 @@ const Players = () => {
           );
         })}
       </div>
+      )}
 
       {creating && (
         <div className="fixed inset-0 z-50 bg-background/80 backdrop-blur grid place-items-center p-4 overflow-auto">
