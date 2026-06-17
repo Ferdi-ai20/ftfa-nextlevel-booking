@@ -19,6 +19,10 @@ const AdminShell = () => {
   const navigate = useNavigate();
   const [pendingApps, setPendingApps] = useState(0);
   const { timedOut, resetTimedOut } = useLoadingTimeout(loading);
+  const retryLoading = () => {
+    resetTimedOut();
+    window.location.reload();
+  };
 
   useEffect(() => {
     if (!loading && !session) navigate("/auth?redirect=/admin", { replace: true });
@@ -39,7 +43,7 @@ const AdminShell = () => {
   }, [isAdmin]);
 
   if (loading) {
-    if (timedOut) return <LoadingTimeoutFallback onRetry={resetTimedOut} fullScreen />;
+    if (timedOut) return <LoadingTimeoutFallback onRetry={retryLoading} fullScreen />;
     return <LoadingBlock fullScreen />;
   }
   if (!session) return null;
