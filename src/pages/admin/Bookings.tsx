@@ -52,7 +52,7 @@ const Bookings = () => {
   const [filter, setFilter] = useState<"upcoming" | "past" | "cancelled" | "all">("upcoming");
   const [search, setSearch] = useState("");
   const [loading, setLoading] = useState(true);
-  const [expanded, setExpanded] = useState<Record<string, boolean>>({});
+  
 
   useEffect(() => { void load(); }, []);
 
@@ -139,7 +139,7 @@ const Bookings = () => {
             const sticky = r.profile_id ? r.profiles?.sticky_note?.trim() : null;
             const playerName = parsePlayerName(r.guest_name);
             const dob = fmtDob(r.guest_dob, r.guest_birth_year);
-            const isOpen = !!expanded[r.id];
+            
 
             const detailItems: { label: string; value: string | null | undefined }[] = isGuest
               ? [
@@ -186,19 +186,10 @@ const Bookings = () => {
                     {r.status === "confirmed" && (
                       <button onClick={() => cancel(r)} className="text-[10px] uppercase tracking-widest border border-destructive/40 text-destructive px-3 py-1.5 hover:bg-destructive/10">Cancel</button>
                     )}
-                    {hasDetails && (
-                      <button
-                        onClick={() => setExpanded((e) => ({ ...e, [r.id]: !e[r.id] }))}
-                        aria-expanded={isOpen}
-                        className="text-[10px] uppercase tracking-widest border border-border text-muted-foreground hover:text-foreground px-3 py-1.5"
-                      >
-                        {isOpen ? "Hide" : "Details"}
-                      </button>
-                    )}
                   </div>
                 </div>
 
-                {hasDetails && isOpen && (
+                {hasDetails && (
                   <div className="mt-3 pt-3 border-t border-border grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-2">
                     {visibleDetails.map((d) => (
                       <div key={d.label} className="text-xs flex gap-2">
