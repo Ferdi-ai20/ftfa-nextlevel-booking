@@ -4,6 +4,7 @@ import { motion } from "framer-motion";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
+import { timedWithTimeout } from "@/lib/timing";
 
 const Auth = () => {
   const navigate = useNavigate();
@@ -15,26 +16,60 @@ const Auth = () => {
   const [password, setPassword] = useState("");
   const [busy, setBusy] = useState(false);
   const [forgot, setForgot] = useState(false);
+  const [routeError, setRouteError] = useState("");
+
+  const resolveAndNavigate = async (userId: string) => {
+    const [roleRes, profileRes] = await Promise.all([
+      timedWithTimeout("Auth.roleQuery", supabase
+        .from("user_roles")
+        .select("role")
+        .eq("user_id", userId)
+        .eq("role", "admin")
+        .maybeSingle(), 3000),
+      timedWithTimeout("Auth.profileStatusQuery", supabase
+        .from("profiles")
+        .select("status")
+        .eq("id", userId)
+        .maybeSingle(), 3000),
+    ]);
+
+    if (roleRes.error) throw roleRes.error;
+    if (profileRes.error) throw profileRes.error;
+
+    if (roleRes.data?.role === "admin") {
+      navigate("/admin", { replace: true });
+      return;
+    }
+
+    navigate(profileRes.data?.status === "active" ? "/dashboard" : "/wachten", { replace: true });
+  };
 
   useEffect(() => {
-    if (!loading && session) {
-      navigate(isAdmin ? "/admin" : redirect, { replace: true });
+    if (!loading && session && !busy) {
+      void resolveAndNavigate(session.user.id).catch((err) => {
+        console.error("Auth existing-session route resolution failed", err);
+        setRouteError("Je sessie is actief, maar je toegang kon niet snel genoeg worden gecontroleerd. Probeer opnieuw.");
+      });
     }
-  }, [session, isAdmin, loading, navigate, redirect]);
+  }, [session, loading, busy]);
 
   const submit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (busy) return;
     setBusy(true);
+    setRouteError("");
     try {
-      const { error } = await supabase.auth.signInWithPassword({
+      const { data, error } = await supabase.auth.signInWithPassword({
         email: email.trim(),
         password,
       });
       if (error) throw error;
-      // The redirect effect above will fire once useAuth resolves session + role.
+      if (!data.user) throw new Error("Geen gebruiker gevonden na inloggen.");
+      await resolveAndNavigate(data.user.id);
     } catch (err: any) {
-      toast.error(err?.message || "Inloggen mislukt.");
+      const message = err?.message || "Inloggen mislukt.";
+      setRouteError(message.includes("timed out") ? "De toegangscontrole duurde te lang. Probeer opnieuw." : message);
+      toast.error(message);
     } finally {
       setBusy(false);
     }
@@ -136,6 +171,20 @@ const Auth = () => {
           >
             {busy ? "..." : forgot ? "Stuur reset-link" : "Inloggen"}
           </button>
+
+          {routeError && !forgot && (
+            <div className="border border-border bg-secondary p-4 space-y-3 text-sm text-foreground" role="alert">
+              <p>{routeError}</p>
+              <button
+                type="button"
+                onClick={(event) => submit(event as unknown as React.FormEvent)}
+                disabled={busy || !email || !password}
+                className="bg-primary text-primary-foreground px-4 py-2 text-xs uppercase tracking-widest font-semibold disabled:opacity-50"
+              >
+                Probeer opnieuw
+              </button>
+            </div>
+          )}
 
           {!forgot && (
             <>
