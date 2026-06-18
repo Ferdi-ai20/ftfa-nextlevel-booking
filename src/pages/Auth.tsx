@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { Link, useNavigate, useSearchParams } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
@@ -8,9 +8,7 @@ import { timedWithTimeout } from "@/lib/timing";
 
 const Auth = () => {
   const navigate = useNavigate();
-  const [params] = useSearchParams();
-  const redirect = params.get("redirect") || "/dashboard";
-  const { session, isAdmin, loading } = useAuth();
+  const { session, loading } = useAuth();
 
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
