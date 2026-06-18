@@ -1,6 +1,7 @@
 import { createContext, useContext, useEffect, useRef, useState, ReactNode } from "react";
 import type { Session, User } from "@supabase/supabase-js";
 import { supabase } from "@/integrations/supabase/client";
+import { timedWithTimeout } from "@/lib/timing";
 
 type AuthCtx = {
   session: Session | null;
@@ -23,15 +24,18 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [isAdmin, setIsAdmin] = useState(false);
   const [loading, setLoading] = useState(true);
   const lastCheckedUserId = useRef<string | null>(null);
+  const inFlightAdminCheck = useRef<Promise<void> | null>(null);
 
   const checkAdmin = async (uid: string) => {
+    if (inFlightAdminCheck.current) return inFlightAdminCheck.current;
+    inFlightAdminCheck.current = (async () => {
     try {
-      const { data } = await supabase
+      const { data } = await timedWithTimeout("useAuth.checkAdmin", supabase
         .from("user_roles")
         .select("role")
         .eq("user_id", uid)
         .eq("role", "admin")
-        .maybeSingle();
+        .maybeSingle(), 3000);
       // Only apply if this is still the current user
       if (lastCheckedUserId.current === uid) {
         setIsAdmin(!!data);
@@ -41,11 +45,15 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       if (lastCheckedUserId.current === uid) setIsAdmin(false);
     } finally {
       if (lastCheckedUserId.current === uid) setLoading(false);
+      inFlightAdminCheck.current = null;
     }
+    })();
+    return inFlightAdminCheck.current;
   };
 
   useEffect(() => {
-    const handle = (s: Session | null) => {
+    const handle = (event: string, s: Session | null) => {
+      console.info("useAuth.onAuthStateChange", event, s?.user?.id ?? "no-user");
       setSession(s);
       if (s?.user) {
         // New / refreshed session: gate consumers until role resolves
@@ -66,8 +74,8 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       }
     };
 
-    const { data: sub } = supabase.auth.onAuthStateChange((_e, s) => handle(s));
-    supabase.auth.getSession().then(({ data }) => handle(data.session));
+    const { data: sub } = supabase.auth.onAuthStateChange((event, s) => handle(event, s));
+    supabase.auth.getSession().then(({ data }) => handle("GET_SESSION", data.session));
 
     return () => sub.subscription.unsubscribe();
   }, []);
