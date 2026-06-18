@@ -95,6 +95,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     } catch {
       /* ignore */
     }
+    inFlightAdminCheck.current = null;
     lastCheckedUserId.current = null;
     setSession(null);
     setIsAdmin(false);
