@@ -7,6 +7,8 @@ type AuthCtx = {
   session: Session | null;
   user: User | null;
   isAdmin: boolean;
+  profileStatus: string | null;
+  profileName: string;
   loading: boolean;
   signOut: () => Promise<void>;
 };
@@ -15,6 +17,8 @@ const Ctx = createContext<AuthCtx>({
   session: null,
   user: null,
   isAdmin: false,
+  profileStatus: null,
+  profileName: "",
   loading: true,
   signOut: async () => {},
 });
@@ -22,33 +26,58 @@ const Ctx = createContext<AuthCtx>({
 export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [session, setSession] = useState<Session | null>(null);
   const [isAdmin, setIsAdmin] = useState(false);
+  const [profileStatus, setProfileStatus] = useState<string | null>(null);
+  const [profileName, setProfileName] = useState("");
   const [loading, setLoading] = useState(true);
-  const lastCheckedUserId = useRef<string | null>(null);
-  const inFlightAdminCheck = useRef<{ uid: string; promise: Promise<void> } | null>(null);
+  const currentUserIdRef = useRef<string | null>(null);
+  const accessResolvedRef = useRef(false);
+  const inFlightAccessCheck = useRef<{ uid: string; promise: Promise<void> } | null>(null);
 
-  const checkAdmin = async (uid: string) => {
-    if (inFlightAdminCheck.current?.uid === uid) return inFlightAdminCheck.current.promise;
+  const resolveAccess = async (uid: string) => {
+    if (inFlightAccessCheck.current?.uid === uid) return inFlightAccessCheck.current.promise;
     const promise = (async () => {
-    try {
-      const { data } = await timedWithTimeout("useAuth.checkAdmin", supabase
-        .from("user_roles")
-        .select("role")
-        .eq("user_id", uid)
-        .eq("role", "admin")
-        .maybeSingle(), 3000);
-      // Only apply if this is still the current user
-      if (lastCheckedUserId.current === uid) {
-        setIsAdmin(!!data);
+      try {
+        const [roleRes, profileRes] = await Promise.all([
+          timedWithTimeout("useAuth.role", supabase
+            .from("user_roles")
+            .select("role")
+            .eq("user_id", uid)
+            .eq("role", "admin")
+            .maybeSingle(), 3000),
+          timedWithTimeout("useAuth.profile", supabase
+            .from("profiles")
+            .select("full_name, status")
+            .eq("id", uid)
+            .maybeSingle(), 3000),
+        ]);
+
+        if (roleRes.error) throw roleRes.error;
+        if (profileRes.error) throw profileRes.error;
+
+        if (currentUserIdRef.current === uid) {
+          setIsAdmin(roleRes.data?.role === "admin");
+          setProfileStatus(profileRes.data?.status ?? "pending");
+          setProfileName(profileRes.data?.full_name ?? "");
+          accessResolvedRef.current = true;
+        }
+      } catch (e) {
+        console.error("resolveAccess failed", e);
+        if (currentUserIdRef.current === uid) {
+          setIsAdmin(false);
+          setProfileStatus(null);
+          setProfileName("");
+          accessResolvedRef.current = false;
+        }
+      } finally {
+        if (currentUserIdRef.current === uid) {
+          setLoading(false);
+        }
+        if (inFlightAccessCheck.current?.uid === uid) {
+          inFlightAccessCheck.current = null;
+        }
       }
-    } catch (e) {
-      console.error("checkAdmin failed", e);
-      if (lastCheckedUserId.current === uid) setIsAdmin(false);
-    } finally {
-      if (lastCheckedUserId.current === uid) setLoading(false);
-      if (inFlightAdminCheck.current?.uid === uid) inFlightAdminCheck.current = null;
-    }
     })();
-    inFlightAdminCheck.current = { uid, promise };
+    inFlightAccessCheck.current = { uid, promise };
     return promise;
   };
 
@@ -57,20 +86,27 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       console.info("useAuth.onAuthStateChange", event, s?.user?.id ?? "no-user");
       setSession(s);
       if (s?.user) {
-        // New / refreshed session: gate consumers until role resolves
-        if (lastCheckedUserId.current !== s.user.id) {
-          lastCheckedUserId.current = s.user.id;
+        const uid = s.user.id;
+        const isSameResolvedUser = currentUserIdRef.current === uid && accessResolvedRef.current;
+        currentUserIdRef.current = uid;
+
+        // Gate consumers until role and profile status are both resolved.
+        if (!isSameResolvedUser) {
+          accessResolvedRef.current = false;
           setLoading(true);
           setIsAdmin(false);
-          // Defer to avoid deadlocks inside onAuthStateChange
-          setTimeout(() => checkAdmin(s.user.id), 0);
+          setProfileStatus(null);
+          setProfileName("");
+          setTimeout(() => resolveAccess(uid), 0);
         } else {
-          // Same user, just a token refresh — make sure loading is false
           setLoading(false);
         }
       } else {
-        lastCheckedUserId.current = null;
+        currentUserIdRef.current = null;
+        accessResolvedRef.current = false;
         setIsAdmin(false);
+        setProfileStatus(null);
+        setProfileName("");
         setLoading(false);
       }
     };
@@ -94,15 +130,18 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     } catch {
       /* ignore */
     }
-    inFlightAdminCheck.current = null;
-    lastCheckedUserId.current = null;
+    inFlightAccessCheck.current = null;
+    currentUserIdRef.current = null;
+    accessResolvedRef.current = false;
     setSession(null);
     setIsAdmin(false);
+    setProfileStatus(null);
+    setProfileName("");
     setLoading(false);
   };
 
   return (
-    <Ctx.Provider value={{ session, user: session?.user ?? null, isAdmin, loading, signOut }}>
+    <Ctx.Provider value={{ session, user: session?.user ?? null, isAdmin, profileStatus, profileName, loading, signOut }}>
       {children}
     </Ctx.Provider>
   );
