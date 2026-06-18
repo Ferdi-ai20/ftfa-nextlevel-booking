@@ -322,7 +322,7 @@ const Dashboard = () => {
               </select>
             </div>
 
-            <SectionGate loading={sectionState.slots.loading || sectionState.bookings.loading} error={!!sectionState.slots.error || !!sectionState.bookings.error} onRetry={() => { loadSection("slots"); loadSection("bookings"); }}>
+            <SectionGate loading={sectionState.slots.loading || sectionState.bookings.loading || sectionState.players.loading} error={!!sectionState.slots.error || !!sectionState.bookings.error || !!sectionState.players.error} onRetry={() => { loadSection("slots"); loadSection("bookings"); loadSection("players"); }}>
               {filteredSlots.length === 0 ? (
                 <div className="border border-border bg-card p-6 text-sm text-muted-foreground">Geen beschikbare trainingen.</div>
               ) : (
