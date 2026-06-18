@@ -9,6 +9,7 @@ const Auth = () => {
   const navigate = useNavigate();
   const { session, isAdmin, profileStatus, loading } = useAuth();
   const routedSessionRef = useRef<string | null>(null);
+  const sessionUserId = session?.user.id ?? null;
 
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -18,14 +19,14 @@ const Auth = () => {
 
   useEffect(() => {
     if (loading || !session || busy) return;
-    if (routedSessionRef.current === session.user.id) return;
+    if (!sessionUserId || routedSessionRef.current === sessionUserId) return;
     if (!isAdmin && !profileStatus) {
       setRouteError("Je sessie is actief, maar je toegang kon niet snel genoeg worden gecontroleerd. Probeer opnieuw.");
       return;
     }
-    routedSessionRef.current = session.user.id;
+    routedSessionRef.current = sessionUserId;
     navigate(isAdmin ? "/admin" : profileStatus === "active" ? "/dashboard" : "/wachten", { replace: true });
-  }, [session?.user.id, isAdmin, profileStatus, loading, busy, navigate]);
+  }, [session, sessionUserId, isAdmin, profileStatus, loading, busy, navigate]);
 
   const submit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -39,8 +40,8 @@ const Auth = () => {
       });
       if (error) throw error;
       if (!data.user) throw new Error("Geen gebruiker gevonden na inloggen.");
-    } catch (err: any) {
-      const message = err?.message || "Inloggen mislukt.";
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : "Inloggen mislukt.";
       setRouteError(message);
       toast.error(message);
     } finally {
