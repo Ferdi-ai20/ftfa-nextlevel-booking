@@ -107,7 +107,7 @@ const Dashboard = () => {
   const [profileName, setProfileName] = useState("");
   const [profilePhone, setProfilePhone] = useState("");
   const [profileStatus, setProfileStatus] = useState<string | null>(null);
-  const [dataLoaded, setDataLoaded] = useState(false);
+  const [sectionState, setSectionState] = useState<SectionLoadState>(initialSectionState);
   const [retryKey, setRetryKey] = useState(0);
   const [filter, setFilter] = useState<"all" | TrainingType>("all");
   const [busy, setBusy] = useState<string | null>(null);
@@ -119,65 +119,62 @@ const Dashboard = () => {
     if (isAdmin) { navigate("/admin", { replace: true }); return; }
   }, [session, isAdmin, loading, navigate]);
 
+  const runSection = async <T,>(key: SectionKey, label: string, operation: PromiseLike<{ data: T; error: any }>, applyData: (data: T) => void, timeoutMs = 5000) => {
+    setSectionState((state) => ({ ...state, [key]: { loading: true, error: null } }));
+    try {
+      const { data, error } = await timedWithTimeout(label, operation, timeoutMs);
+      if (error) throw error;
+      applyData(data);
+      setSectionState((state) => ({ ...state, [key]: { loading: false, error: null } }));
+    } catch (error: any) {
+      console.error(`${label} failed`, error);
+      setSectionState((state) => ({ ...state, [key]: { loading: false, error: error?.message ?? sectionErrorMessage } }));
+    }
+  };
+
+  const loadSection = (key: SectionKey, uid = session?.user.id) => {
+    if (!uid) return;
+    const today = new Date().toISOString().slice(0, 10);
+    if (key === "profile") {
+      void runSection("profile", "Dashboard.profile", supabase.from("profiles").select("full_name, phone, status").eq("id", uid).maybeSingle(), (prof) => {
+        setProfileName(prof?.full_name ?? "");
+        setProfilePhone(prof?.phone ?? "");
+        setProfileStatus(prof?.status ?? "pending");
+      }, 3000);
+    } else if (key === "players") {
+      void runSection("players", "Dashboard.players", supabase.from("players").select("id, player_name, birth_year, club, team, position").eq("parent_profile_id", uid), (ps) => setPlayers((ps ?? []) as Player[]));
+    } else if (key === "slots") {
+      void runSection("slots", "Dashboard.slots", supabase.from("training_slots").select("id, date, start_time, end_time, training_type, visibility, status, max_players, location, player_note")
+        .gte("date", today).eq("visibility", "private").eq("status", "open").order("date").order("start_time"), (sl) => setSlots((sl ?? []) as Slot[]));
+    } else if (key === "bookings") {
+      void runSection("bookings", "Dashboard.bookings", supabase.from("bookings").select("id, slot_id, status, profile_id, player_id").eq("profile_id", uid), (bk) => setBookings((bk ?? []) as Booking[]));
+    } else if (key === "goals") {
+      void runSection("goals", "Dashboard.goals", supabase.from("player_goals").select("id, description, status, created_at").eq("profile_id", uid).order("created_at", { ascending: false }), (gl) => setGoals((gl ?? []) as Goal[]));
+    } else if (key === "homework") {
+      void runSection("homework", "Dashboard.homework", supabase.from("player_homework").select("id, title, description, video_url, due_date, status").eq("profile_id", uid).order("assigned_at", { ascending: false }), (hw) => setHomework((hw ?? []) as Homework[]));
+    } else if (key === "coachNotes") {
+      void runSection("coachNotes", "Dashboard.coachNotes", supabase.from("player_coach_notes").select("id, note, created_at").eq("profile_id", uid).order("created_at", { ascending: false }), (cn) => setCoachNotes((cn ?? []) as CoachNote[]));
+    }
+  };
+
+  const loadAll = (uid = session?.user.id) => {
+    if (!uid) return;
+    setSectionState(initialSectionState);
+    (["profile", "players", "slots", "bookings", "goals", "homework", "coachNotes"] as SectionKey[]).forEach((key) => loadSection(key, uid));
+  };
+
   useEffect(() => {
     if (!session || isAdmin) return;
-    void loadAll();
+    loadAll(session.user.id);
   }, [session, isAdmin, retryKey]);
 
-  // Redirect to pending screen if not active
   useEffect(() => {
     if (!loading && session && !isAdmin && profileStatus && profileStatus !== "active") {
       navigate("/wachten", { replace: true });
     }
   }, [profileStatus, session, isAdmin, loading, navigate]);
 
-  const loadAll = async () => {
-    const today = new Date().toISOString().slice(0, 10);
-    const uid = session!.user.id;
-    try {
-      const [profRes, playersRes, slotsRes, bookingsRes, goalsRes, homeworkRes, notesRes] = await Promise.all([
-        supabase.from("profiles").select("full_name, phone, status").eq("id", uid).maybeSingle(),
-        supabase.from("players").select("id, player_name, birth_year, club, team, position").eq("parent_profile_id", uid),
-        supabase.from("training_slots").select("id, date, start_time, end_time, training_type, visibility, status, max_players, location, player_note")
-          .gte("date", today).eq("visibility", "private").eq("status", "open").order("date").order("start_time"),
-        supabase.from("bookings").select("id, slot_id, status, profile_id, player_id").eq("profile_id", uid),
-        supabase.from("player_goals").select("id, description, status, created_at").eq("profile_id", uid).order("created_at", { ascending: false }),
-        supabase.from("player_homework").select("id, title, description, video_url, due_date, status").eq("profile_id", uid).order("assigned_at", { ascending: false }),
-        supabase.from("player_coach_notes").select("id, note, created_at").eq("profile_id", uid).order("created_at", { ascending: false }),
-      ]);
-      const firstError = [profRes.error, playersRes.error, slotsRes.error, bookingsRes.error, goalsRes.error, homeworkRes.error, notesRes.error].find(Boolean);
-      if (firstError) throw firstError;
-      const { data: prof } = profRes;
-      const { data: ps } = playersRes;
-      const { data: sl } = slotsRes;
-      const { data: bk } = bookingsRes;
-      const { data: gl } = goalsRes;
-      const { data: hw } = homeworkRes;
-      const { data: cn } = notesRes;
-      setProfileName(prof?.full_name ?? "");
-      setProfilePhone(prof?.phone ?? "");
-      setProfileStatus(prof?.status ?? "pending");
-      setPlayers((ps ?? []) as Player[]);
-      setSlots((sl ?? []) as Slot[]);
-      setBookings((bk ?? []) as Booking[]);
-      setGoals((gl ?? []) as Goal[]);
-      setHomework((hw ?? []) as Homework[]);
-      setCoachNotes((cn ?? []) as CoachNote[]);
-    } catch (e) {
-      console.error("Dashboard loadAll failed", e);
-      setProfileStatus("pending");
-    } finally {
-      setDataLoaded(true);
-    }
-  };
-
-  const isPageWaiting = loading || Boolean(session && !isAdmin && (!dataLoaded || profileStatus !== "active"));
-  const { timedOut, resetTimedOut } = useLoadingTimeout(isPageWaiting);
-  const retryLoad = () => {
-    resetTimedOut();
-    setDataLoaded(false);
-    setRetryKey((key) => key + 1);
-  };
+  const retryLoad = () => setRetryKey((key) => key + 1);
 
   const book = async (s: Slot) => {
     if (profileStatus !== "active") {
