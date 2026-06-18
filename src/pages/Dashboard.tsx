@@ -1,10 +1,11 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState, type ReactNode } from "react";
 import { useNavigate, Link } from "react-router-dom";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { notify, ADMIN_EMAIL } from "@/lib/notify";
 import { LoadingBlock, LoadingTimeoutFallback, useLoadingTimeout } from "@/components/LoadingState";
+import { timedWithTimeout } from "@/lib/timing";
 import {
   TrainingType,
   SlotVisibility,
@@ -65,6 +66,32 @@ const TABS = [
   { id: "profile", label: "Profiel" },
 ] as const;
 type TabId = typeof TABS[number]["id"];
+type SectionKey = "profile" | "players" | "slots" | "bookings" | "goals" | "homework" | "coachNotes";
+type SectionLoadState = Record<SectionKey, { loading: boolean; error: string | null }>;
+
+const initialSectionState: SectionLoadState = {
+  profile: { loading: true, error: null },
+  players: { loading: true, error: null },
+  slots: { loading: true, error: null },
+  bookings: { loading: true, error: null },
+  goals: { loading: true, error: null },
+  homework: { loading: true, error: null },
+  coachNotes: { loading: true, error: null },
+};
+
+const sectionErrorMessage = "Dit onderdeel kon niet snel genoeg worden geladen.";
+
+const SectionGate = ({ loading, error, onRetry, children }: { loading: boolean; error: boolean; onRetry: () => void; children: ReactNode }) => {
+  const { timedOut, resetTimedOut } = useLoadingTimeout(loading);
+  const retry = () => {
+    resetTimedOut();
+    onRetry();
+  };
+
+  if (loading) return timedOut ? <LoadingTimeoutFallback onRetry={retry} showSignOut={false} /> : <LoadingBlock />;
+  if (error) return <LoadingTimeoutFallback onRetry={retry} showSignOut={false} />;
+  return <>{children}</>;
+};
 
 const Dashboard = () => {
   const { session, isAdmin, loading, signOut } = useAuth();
@@ -80,7 +107,7 @@ const Dashboard = () => {
   const [profileName, setProfileName] = useState("");
   const [profilePhone, setProfilePhone] = useState("");
   const [profileStatus, setProfileStatus] = useState<string | null>(null);
-  const [dataLoaded, setDataLoaded] = useState(false);
+  const [sectionState, setSectionState] = useState<SectionLoadState>(initialSectionState);
   const [retryKey, setRetryKey] = useState(0);
   const [filter, setFilter] = useState<"all" | TrainingType>("all");
   const [busy, setBusy] = useState<string | null>(null);
@@ -92,65 +119,62 @@ const Dashboard = () => {
     if (isAdmin) { navigate("/admin", { replace: true }); return; }
   }, [session, isAdmin, loading, navigate]);
 
-  useEffect(() => {
-    if (!session || isAdmin) return;
-    void loadAll();
-  }, [session, isAdmin, retryKey]);
+  const runSection = async <T,>(key: SectionKey, label: string, operation: PromiseLike<{ data: T; error: any }>, applyData: (data: T) => void, timeoutMs = 5000) => {
+    setSectionState((state) => ({ ...state, [key]: { loading: true, error: null } }));
+    try {
+      const { data, error } = await timedWithTimeout(label, operation, timeoutMs);
+      if (error) throw error;
+      applyData(data);
+      setSectionState((state) => ({ ...state, [key]: { loading: false, error: null } }));
+    } catch (error: any) {
+      console.error(`${label} failed`, error);
+      setSectionState((state) => ({ ...state, [key]: { loading: false, error: error?.message ?? sectionErrorMessage } }));
+    }
+  };
 
-  // Redirect to pending screen if not active
+  const loadSection = (key: SectionKey, uid = session?.user.id) => {
+    if (!uid) return;
+    const today = new Date().toISOString().slice(0, 10);
+    if (key === "profile") {
+      void runSection("profile", "Dashboard.profile", supabase.from("profiles").select("full_name, phone, status").eq("id", uid).maybeSingle(), (prof) => {
+        setProfileName(prof?.full_name ?? "");
+        setProfilePhone(prof?.phone ?? "");
+        setProfileStatus(prof?.status ?? "pending");
+      }, 3000);
+    } else if (key === "players") {
+      void runSection("players", "Dashboard.players", supabase.from("players").select("id, player_name, birth_year, club, team, position").eq("parent_profile_id", uid), (ps) => setPlayers((ps ?? []) as Player[]));
+    } else if (key === "slots") {
+      void runSection("slots", "Dashboard.slots", supabase.from("training_slots").select("id, date, start_time, end_time, training_type, visibility, status, max_players, location, player_note")
+        .gte("date", today).eq("visibility", "private").eq("status", "open").order("date").order("start_time"), (sl) => setSlots((sl ?? []) as Slot[]));
+    } else if (key === "bookings") {
+      void runSection("bookings", "Dashboard.bookings", supabase.from("bookings").select("id, slot_id, status, profile_id, player_id").eq("profile_id", uid), (bk) => setBookings((bk ?? []) as Booking[]));
+    } else if (key === "goals") {
+      void runSection("goals", "Dashboard.goals", supabase.from("player_goals").select("id, description, status, created_at").eq("profile_id", uid).order("created_at", { ascending: false }), (gl) => setGoals((gl ?? []) as Goal[]));
+    } else if (key === "homework") {
+      void runSection("homework", "Dashboard.homework", supabase.from("player_homework").select("id, title, description, video_url, due_date, status").eq("profile_id", uid).order("assigned_at", { ascending: false }), (hw) => setHomework((hw ?? []) as Homework[]));
+    } else if (key === "coachNotes") {
+      void runSection("coachNotes", "Dashboard.coachNotes", supabase.from("player_coach_notes").select("id, note, created_at").eq("profile_id", uid).order("created_at", { ascending: false }), (cn) => setCoachNotes((cn ?? []) as CoachNote[]));
+    }
+  };
+
+  const loadAll = (uid = session?.user.id) => {
+    if (!uid) return;
+    setSectionState(initialSectionState);
+    (["profile", "players", "slots", "bookings", "goals", "homework", "coachNotes"] as SectionKey[]).forEach((key) => loadSection(key, uid));
+  };
+
+  useEffect(() => {
+    if (!session || isAdmin || loading) return;
+    loadAll(session.user.id);
+  }, [session, isAdmin, loading, retryKey]);
+
   useEffect(() => {
     if (!loading && session && !isAdmin && profileStatus && profileStatus !== "active") {
       navigate("/wachten", { replace: true });
     }
   }, [profileStatus, session, isAdmin, loading, navigate]);
 
-  const loadAll = async () => {
-    const today = new Date().toISOString().slice(0, 10);
-    const uid = session!.user.id;
-    try {
-      const [profRes, playersRes, slotsRes, bookingsRes, goalsRes, homeworkRes, notesRes] = await Promise.all([
-        supabase.from("profiles").select("full_name, phone, status").eq("id", uid).maybeSingle(),
-        supabase.from("players").select("id, player_name, birth_year, club, team, position").eq("parent_profile_id", uid),
-        supabase.from("training_slots").select("id, date, start_time, end_time, training_type, visibility, status, max_players, location, player_note")
-          .gte("date", today).eq("visibility", "private").eq("status", "open").order("date").order("start_time"),
-        supabase.from("bookings").select("id, slot_id, status, profile_id, player_id").eq("profile_id", uid),
-        supabase.from("player_goals").select("id, description, status, created_at").eq("profile_id", uid).order("created_at", { ascending: false }),
-        supabase.from("player_homework").select("id, title, description, video_url, due_date, status").eq("profile_id", uid).order("assigned_at", { ascending: false }),
-        supabase.from("player_coach_notes").select("id, note, created_at").eq("profile_id", uid).order("created_at", { ascending: false }),
-      ]);
-      const firstError = [profRes.error, playersRes.error, slotsRes.error, bookingsRes.error, goalsRes.error, homeworkRes.error, notesRes.error].find(Boolean);
-      if (firstError) throw firstError;
-      const { data: prof } = profRes;
-      const { data: ps } = playersRes;
-      const { data: sl } = slotsRes;
-      const { data: bk } = bookingsRes;
-      const { data: gl } = goalsRes;
-      const { data: hw } = homeworkRes;
-      const { data: cn } = notesRes;
-      setProfileName(prof?.full_name ?? "");
-      setProfilePhone(prof?.phone ?? "");
-      setProfileStatus(prof?.status ?? "pending");
-      setPlayers((ps ?? []) as Player[]);
-      setSlots((sl ?? []) as Slot[]);
-      setBookings((bk ?? []) as Booking[]);
-      setGoals((gl ?? []) as Goal[]);
-      setHomework((hw ?? []) as Homework[]);
-      setCoachNotes((cn ?? []) as CoachNote[]);
-    } catch (e) {
-      console.error("Dashboard loadAll failed", e);
-      setProfileStatus("pending");
-    } finally {
-      setDataLoaded(true);
-    }
-  };
-
-  const isPageWaiting = loading || Boolean(session && !isAdmin && (!dataLoaded || profileStatus !== "active"));
-  const { timedOut, resetTimedOut } = useLoadingTimeout(isPageWaiting);
-  const retryLoad = () => {
-    resetTimedOut();
-    setDataLoaded(false);
-    setRetryKey((key) => key + 1);
-  };
+  const retryLoad = () => setRetryKey((key) => key + 1);
 
   const book = async (s: Slot) => {
     if (profileStatus !== "active") {
@@ -253,16 +277,9 @@ const Dashboard = () => {
     .sort((a, b) => (a.s.date + a.s.start_time).localeCompare(b.s.date + b.s.start_time)),
     [bookings, slots]);
 
-  if (loading || (session && !isAdmin && !dataLoaded)) {
-    if (timedOut) return <LoadingTimeoutFallback onRetry={retryLoad} fullScreen />;
-    return <LoadingBlock fullScreen />;
-  }
+  if (loading && !session) return <LoadingBlock fullScreen />;
   if (!session || isAdmin) return null;
-  if (profileStatus !== "active") {
-    // Redirect effect is firing; show loader instead of blank screen
-    if (timedOut) return <LoadingTimeoutFallback onRetry={retryLoad} fullScreen />;
-    return <LoadingBlock fullScreen />;
-  }
+  if (profileStatus && profileStatus !== "active") return <LoadingBlock fullScreen />;
 
   return (
     <main className="min-h-screen bg-background text-foreground">
@@ -305,32 +322,34 @@ const Dashboard = () => {
               </select>
             </div>
 
-            {filteredSlots.length === 0 ? (
-              <div className="border border-border bg-card p-6 text-sm text-muted-foreground">Geen beschikbare trainingen.</div>
-            ) : (
-              <div className="grid sm:grid-cols-2 gap-3">
-                {filteredSlots.map((s) => (
-                  <div key={s.id} className="border border-border bg-card p-4">
-                    <div className="display-font text-lg uppercase">{fmtDate(s.date)}</div>
-                    <div className="font-mono text-sm mt-1">{fmtTime(s.start_time)} – {fmtTime(s.end_time)}</div>
-                    <div className="text-xs uppercase tracking-widest text-muted-foreground mt-2">
-                      {trainingTypeLabel(s.training_type)}{s.location ? ` · ${s.location}` : ""}
+            <SectionGate loading={sectionState.slots.loading || sectionState.bookings.loading || sectionState.players.loading} error={!!sectionState.slots.error || !!sectionState.bookings.error || !!sectionState.players.error} onRetry={() => { loadSection("slots"); loadSection("bookings"); loadSection("players"); }}>
+              {filteredSlots.length === 0 ? (
+                <div className="border border-border bg-card p-6 text-sm text-muted-foreground">Geen beschikbare trainingen.</div>
+              ) : (
+                <div className="grid sm:grid-cols-2 gap-3">
+                  {filteredSlots.map((s) => (
+                    <div key={s.id} className="border border-border bg-card p-4">
+                      <div className="display-font text-lg uppercase">{fmtDate(s.date)}</div>
+                      <div className="font-mono text-sm mt-1">{fmtTime(s.start_time)} – {fmtTime(s.end_time)}</div>
+                      <div className="text-xs uppercase tracking-widest text-muted-foreground mt-2">
+                        {trainingTypeLabel(s.training_type)}{s.location ? ` · ${s.location}` : ""}
+                      </div>
+                      {s.player_note && <div className="text-xs text-muted-foreground mt-2 italic">"{s.player_note}"</div>}
+                      <div className="text-[10px] uppercase tracking-widest text-muted-foreground mt-2">
+                        Max {s.max_players} {s.max_players === 1 ? "speler" : "spelers"}
+                      </div>
+                      <button
+                        disabled={busy === s.id}
+                        onClick={() => book(s)}
+                        className="mt-3 w-full bg-primary text-primary-foreground px-3 py-2 text-xs uppercase tracking-widest font-semibold hover:bg-primary/90 disabled:opacity-40"
+                      >
+                        {busy === s.id ? "Bezig…" : "Boek training"}
+                      </button>
                     </div>
-                    {s.player_note && <div className="text-xs text-muted-foreground mt-2 italic">"{s.player_note}"</div>}
-                    <div className="text-[10px] uppercase tracking-widest text-muted-foreground mt-2">
-                      Max {s.max_players} {s.max_players === 1 ? "speler" : "spelers"}
-                    </div>
-                    <button
-                      disabled={busy === s.id}
-                      onClick={() => book(s)}
-                      className="mt-3 w-full bg-primary text-primary-foreground px-3 py-2 text-xs uppercase tracking-widest font-semibold hover:bg-primary/90 disabled:opacity-40"
-                    >
-                      {busy === s.id ? "Bezig…" : "Boek training"}
-                    </button>
-                  </div>
-                ))}
-              </div>
-            )}
+                  ))}
+                </div>
+              )}
+            </SectionGate>
           </section>
         )}
 
@@ -338,39 +357,41 @@ const Dashboard = () => {
           <section>
             <div className="text-[11px] uppercase tracking-[0.3em] text-primary">/ Mijn boekingen</div>
             <h2 className="display-font text-3xl uppercase mt-2 mb-6">Aankomende trainingen</h2>
-            {myUpcoming.length === 0 ? (
-              <div className="border border-border bg-card p-6 text-sm text-muted-foreground">Nog geen aankomende trainingen.</div>
-            ) : (
-              <div className="space-y-2">
-                {myUpcoming.map(({ b, s }) => {
-                  const hours = hoursUntil(s.date, s.start_time);
-                  const canCancel = hours >= 48;
-                  return (
-                    <div key={b.id} className="border border-border bg-card p-4 flex items-center justify-between gap-3">
-                      <div>
-                        <div className="display-font text-xl uppercase">{fmtDate(s.date)}</div>
-                        <div className="text-xs uppercase tracking-widest text-muted-foreground mt-1">
-                          {fmtTime(s.start_time)}–{fmtTime(s.end_time)} · {trainingTypeLabel(s.training_type)}{s.location ? ` · ${s.location}` : ""}
+            <SectionGate loading={sectionState.bookings.loading || sectionState.slots.loading} error={!!sectionState.bookings.error || !!sectionState.slots.error} onRetry={() => { loadSection("bookings"); loadSection("slots"); }}>
+              {myUpcoming.length === 0 ? (
+                <div className="border border-border bg-card p-6 text-sm text-muted-foreground">Nog geen aankomende trainingen.</div>
+              ) : (
+                <div className="space-y-2">
+                  {myUpcoming.map(({ b, s }) => {
+                    const hours = hoursUntil(s.date, s.start_time);
+                    const canCancel = hours >= 48;
+                    return (
+                      <div key={b.id} className="border border-border bg-card p-4 flex items-center justify-between gap-3">
+                        <div>
+                          <div className="display-font text-xl uppercase">{fmtDate(s.date)}</div>
+                          <div className="text-xs uppercase tracking-widest text-muted-foreground mt-1">
+                            {fmtTime(s.start_time)}–{fmtTime(s.end_time)} · {trainingTypeLabel(s.training_type)}{s.location ? ` · ${s.location}` : ""}
+                          </div>
+                          <div className="text-[10px] uppercase tracking-widest mt-1 text-primary">Bevestigd</div>
                         </div>
-                        <div className="text-[10px] uppercase tracking-widest mt-1 text-primary">Bevestigd</div>
+                        {canCancel ? (
+                          <button
+                            onClick={() => setCancelTarget({ b, s })}
+                            className="text-[10px] uppercase tracking-widest border border-destructive/40 text-destructive px-3 py-1.5 hover:bg-destructive/10"
+                          >
+                            Annuleren
+                          </button>
+                        ) : (
+                          <div className="text-[10px] uppercase tracking-widest text-muted-foreground text-right max-w-[160px]">
+                            Annuleren niet meer mogelijk (&lt; 48u). Neem contact op met Ferdi.
+                          </div>
+                        )}
                       </div>
-                      {canCancel ? (
-                        <button
-                          onClick={() => setCancelTarget({ b, s })}
-                          className="text-[10px] uppercase tracking-widest border border-destructive/40 text-destructive px-3 py-1.5 hover:bg-destructive/10"
-                        >
-                          Annuleren
-                        </button>
-                      ) : (
-                        <div className="text-[10px] uppercase tracking-widest text-muted-foreground text-right max-w-[160px]">
-                          Annuleren niet meer mogelijk (&lt; 48u). Neem contact op met Ferdi.
-                        </div>
-                      )}
-                    </div>
-                  );
-                })}
-              </div>
-            )}
+                    );
+                  })}
+                </div>
+              )}
+            </SectionGate>
           </section>
         )}
 
@@ -379,66 +400,72 @@ const Dashboard = () => {
             <div>
               <div className="text-[11px] uppercase tracking-[0.3em] text-primary">/ Ontwikkeling</div>
               <h2 className="display-font text-3xl uppercase mt-2 mb-6">Mijn doelen</h2>
-              {goals.length === 0 ? (
-                <div className="border border-border bg-card p-6 text-sm text-muted-foreground">Nog geen doelen vastgelegd.</div>
-              ) : (
-                <div className="space-y-2">
-                  {goals.map((g) => (
-                    <div key={g.id} className="border border-border bg-card p-4">
-                      <div className="text-sm">{g.description}</div>
-                      <div className="text-[10px] uppercase tracking-widest text-muted-foreground mt-2">Status: {g.status}</div>
-                    </div>
-                  ))}
-                </div>
-              )}
+              <SectionGate loading={sectionState.goals.loading} error={!!sectionState.goals.error} onRetry={() => loadSection("goals")}>
+                {goals.length === 0 ? (
+                  <div className="border border-border bg-card p-6 text-sm text-muted-foreground">Nog geen doelen vastgelegd.</div>
+                ) : (
+                  <div className="space-y-2">
+                    {goals.map((g) => (
+                      <div key={g.id} className="border border-border bg-card p-4">
+                        <div className="text-sm">{g.description}</div>
+                        <div className="text-[10px] uppercase tracking-widest text-muted-foreground mt-2">Status: {g.status}</div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </SectionGate>
             </div>
 
             <div>
               <h2 className="display-font text-3xl uppercase mb-6">Huiswerk</h2>
-              {homework.length === 0 ? (
-                <div className="border border-border bg-card p-6 text-sm text-muted-foreground">Geen huiswerk op dit moment.</div>
-              ) : (
-                <div className="space-y-2">
-                  {homework.map((h) => (
-                    <div key={h.id} className="border border-border bg-card p-4 flex items-start gap-3">
-                      <input
-                        type="checkbox"
-                        checked={h.status === "completed"}
-                        onChange={() => toggleHomework(h)}
-                        className="mt-1 h-4 w-4 accent-primary"
-                      />
-                      <div className="flex-1 min-w-0">
-                        <div className={`display-font text-lg uppercase ${h.status === "completed" ? "line-through text-muted-foreground" : ""}`}>{h.title}</div>
-                        {h.description && <div className="text-sm text-muted-foreground mt-1">{h.description}</div>}
-                        {h.video_url && (
-                          <a href={h.video_url} target="_blank" rel="noreferrer" className="text-xs uppercase tracking-widest text-primary mt-2 inline-block">
-                            Bekijk video →
-                          </a>
-                        )}
-                        {h.due_date && <div className="text-[10px] uppercase tracking-widest text-muted-foreground mt-2">Deadline: {fmtDate(h.due_date)}</div>}
+              <SectionGate loading={sectionState.homework.loading} error={!!sectionState.homework.error} onRetry={() => loadSection("homework")}>
+                {homework.length === 0 ? (
+                  <div className="border border-border bg-card p-6 text-sm text-muted-foreground">Geen huiswerk op dit moment.</div>
+                ) : (
+                  <div className="space-y-2">
+                    {homework.map((h) => (
+                      <div key={h.id} className="border border-border bg-card p-4 flex items-start gap-3">
+                        <input
+                          type="checkbox"
+                          checked={h.status === "completed"}
+                          onChange={() => toggleHomework(h)}
+                          className="mt-1 h-4 w-4 accent-primary"
+                        />
+                        <div className="flex-1 min-w-0">
+                          <div className={`display-font text-lg uppercase ${h.status === "completed" ? "line-through text-muted-foreground" : ""}`}>{h.title}</div>
+                          {h.description && <div className="text-sm text-muted-foreground mt-1">{h.description}</div>}
+                          {h.video_url && (
+                            <a href={h.video_url} target="_blank" rel="noreferrer" className="text-xs uppercase tracking-widest text-primary mt-2 inline-block">
+                              Bekijk video →
+                            </a>
+                          )}
+                          {h.due_date && <div className="text-[10px] uppercase tracking-widest text-muted-foreground mt-2">Deadline: {fmtDate(h.due_date)}</div>}
+                        </div>
                       </div>
-                    </div>
-                  ))}
-                </div>
-              )}
+                    ))}
+                  </div>
+                )}
+              </SectionGate>
             </div>
 
             <div>
               <h2 className="display-font text-3xl uppercase mb-6">Coach notities</h2>
-              {coachNotes.length === 0 ? (
-                <div className="border border-border bg-card p-6 text-sm text-muted-foreground">Nog geen notities van de coach.</div>
-              ) : (
-                <div className="space-y-2">
-                  {coachNotes.map((n) => (
-                    <div key={n.id} className="border border-border bg-card p-4">
-                      <div className="text-[10px] uppercase tracking-widest text-muted-foreground">
-                        {new Date(n.created_at).toLocaleDateString("nl-NL")}
+              <SectionGate loading={sectionState.coachNotes.loading} error={!!sectionState.coachNotes.error} onRetry={() => loadSection("coachNotes")}>
+                {coachNotes.length === 0 ? (
+                  <div className="border border-border bg-card p-6 text-sm text-muted-foreground">Nog geen notities van de coach.</div>
+                ) : (
+                  <div className="space-y-2">
+                    {coachNotes.map((n) => (
+                      <div key={n.id} className="border border-border bg-card p-4">
+                        <div className="text-[10px] uppercase tracking-widest text-muted-foreground">
+                          {new Date(n.created_at).toLocaleDateString("nl-NL")}
+                        </div>
+                        <div className="text-sm mt-1 whitespace-pre-wrap">{n.note}</div>
                       </div>
-                      <div className="text-sm mt-1 whitespace-pre-wrap">{n.note}</div>
-                    </div>
-                  ))}
-                </div>
-              )}
+                    ))}
+                  </div>
+                )}
+              </SectionGate>
             </div>
           </section>
         )}
@@ -449,33 +476,37 @@ const Dashboard = () => {
               <div className="text-[11px] uppercase tracking-[0.3em] text-primary">/ Profiel</div>
               <h2 className="display-font text-3xl uppercase mt-2 mb-6">Mijn gegevens</h2>
             </div>
-            <div className="border border-border bg-card p-5 space-y-2">
-              <div className="text-[10px] uppercase tracking-widest text-muted-foreground">Naam</div>
-              <div className="text-sm">{profileName || "—"}</div>
-              <div className="text-[10px] uppercase tracking-widest text-muted-foreground pt-3">E-mail</div>
-              <div className="text-sm">{session.user.email}</div>
-              <div className="text-[10px] uppercase tracking-widest text-muted-foreground pt-3">Telefoon</div>
-              <div className="text-sm">{profilePhone || "—"}</div>
-            </div>
-
-            {players.length > 0 && (
-              <div>
-                <h3 className="display-font text-2xl uppercase mb-4">Speler(s)</h3>
-                <div className="space-y-2">
-                  {players.map((p) => (
-                    <div key={p.id} className="border border-border bg-card p-5">
-                      <div className="display-font text-xl uppercase">{p.player_name}</div>
-                      <div className="text-xs text-muted-foreground mt-2 space-y-1">
-                        {p.birth_year && <div>Geboortejaar: {p.birth_year}</div>}
-                        <div>Club: {p.club ?? "—"}</div>
-                        <div>Team: {p.team ?? "—"}</div>
-                        <div>Positie: {p.position ?? "—"}</div>
-                      </div>
-                    </div>
-                  ))}
-                </div>
+            <SectionGate loading={sectionState.profile.loading} error={!!sectionState.profile.error} onRetry={() => loadSection("profile")}>
+              <div className="border border-border bg-card p-5 space-y-2">
+                <div className="text-[10px] uppercase tracking-widest text-muted-foreground">Naam</div>
+                <div className="text-sm">{profileName || "—"}</div>
+                <div className="text-[10px] uppercase tracking-widest text-muted-foreground pt-3">E-mail</div>
+                <div className="text-sm">{session.user.email}</div>
+                <div className="text-[10px] uppercase tracking-widest text-muted-foreground pt-3">Telefoon</div>
+                <div className="text-sm">{profilePhone || "—"}</div>
               </div>
-            )}
+            </SectionGate>
+
+            <SectionGate loading={sectionState.players.loading} error={!!sectionState.players.error} onRetry={() => loadSection("players")}>
+              {players.length > 0 && (
+                <div>
+                  <h3 className="display-font text-2xl uppercase mb-4">Speler(s)</h3>
+                  <div className="space-y-2">
+                    {players.map((p) => (
+                      <div key={p.id} className="border border-border bg-card p-5">
+                        <div className="display-font text-xl uppercase">{p.player_name}</div>
+                        <div className="text-xs text-muted-foreground mt-2 space-y-1">
+                          {p.birth_year && <div>Geboortejaar: {p.birth_year}</div>}
+                          <div>Club: {p.club ?? "—"}</div>
+                          <div>Team: {p.team ?? "—"}</div>
+                          <div>Positie: {p.position ?? "—"}</div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </SectionGate>
 
             <p className="text-xs text-muted-foreground">
               Wil je gegevens wijzigen? Neem contact op met Ferdi via WhatsApp:{" "}

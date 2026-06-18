@@ -1,6 +1,7 @@
 import { createContext, useContext, useEffect, useRef, useState, ReactNode } from "react";
 import type { Session, User } from "@supabase/supabase-js";
 import { supabase } from "@/integrations/supabase/client";
+import { timedWithTimeout } from "@/lib/timing";
 
 type AuthCtx = {
   session: Session | null;
@@ -23,15 +24,18 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [isAdmin, setIsAdmin] = useState(false);
   const [loading, setLoading] = useState(true);
   const lastCheckedUserId = useRef<string | null>(null);
+  const inFlightAdminCheck = useRef<{ uid: string; promise: Promise<void> } | null>(null);
 
   const checkAdmin = async (uid: string) => {
+    if (inFlightAdminCheck.current?.uid === uid) return inFlightAdminCheck.current.promise;
+    const promise = (async () => {
     try {
-      const { data } = await supabase
+      const { data } = await timedWithTimeout("useAuth.checkAdmin", supabase
         .from("user_roles")
         .select("role")
         .eq("user_id", uid)
         .eq("role", "admin")
-        .maybeSingle();
+        .maybeSingle(), 3000);
       // Only apply if this is still the current user
       if (lastCheckedUserId.current === uid) {
         setIsAdmin(!!data);
@@ -41,11 +45,16 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       if (lastCheckedUserId.current === uid) setIsAdmin(false);
     } finally {
       if (lastCheckedUserId.current === uid) setLoading(false);
+      if (inFlightAdminCheck.current?.uid === uid) inFlightAdminCheck.current = null;
     }
+    })();
+    inFlightAdminCheck.current = { uid, promise };
+    return promise;
   };
 
   useEffect(() => {
-    const handle = (s: Session | null) => {
+    const handle = (event: string, s: Session | null) => {
+      console.info("useAuth.onAuthStateChange", event, s?.user?.id ?? "no-user");
       setSession(s);
       if (s?.user) {
         // New / refreshed session: gate consumers until role resolves
@@ -66,8 +75,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       }
     };
 
-    const { data: sub } = supabase.auth.onAuthStateChange((_e, s) => handle(s));
-    supabase.auth.getSession().then(({ data }) => handle(data.session));
+    const { data: sub } = supabase.auth.onAuthStateChange((event, s) => handle(event, s));
 
     return () => sub.subscription.unsubscribe();
   }, []);
@@ -86,6 +94,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     } catch {
       /* ignore */
     }
+    inFlightAdminCheck.current = null;
     lastCheckedUserId.current = null;
     setSession(null);
     setIsAdmin(false);
