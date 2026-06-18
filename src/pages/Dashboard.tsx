@@ -277,7 +277,7 @@ const Dashboard = () => {
     .sort((a, b) => (a.s.date + a.s.start_time).localeCompare(b.s.date + b.s.start_time)),
     [bookings, slots]);
 
-  if (loading) return <LoadingBlock fullScreen />;
+  if (loading && !session) return <LoadingBlock fullScreen />;
   if (!session || isAdmin) return null;
   if (profileStatus && profileStatus !== "active") return <LoadingBlock fullScreen />;
 
