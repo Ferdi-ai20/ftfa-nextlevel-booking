@@ -400,48 +400,52 @@ const Dashboard = () => {
             <div>
               <div className="text-[11px] uppercase tracking-[0.3em] text-primary">/ Ontwikkeling</div>
               <h2 className="display-font text-3xl uppercase mt-2 mb-6">Mijn doelen</h2>
-              {goals.length === 0 ? (
-                <div className="border border-border bg-card p-6 text-sm text-muted-foreground">Nog geen doelen vastgelegd.</div>
-              ) : (
-                <div className="space-y-2">
-                  {goals.map((g) => (
-                    <div key={g.id} className="border border-border bg-card p-4">
-                      <div className="text-sm">{g.description}</div>
-                      <div className="text-[10px] uppercase tracking-widest text-muted-foreground mt-2">Status: {g.status}</div>
-                    </div>
-                  ))}
-                </div>
-              )}
+              <SectionGate loading={sectionState.goals.loading} error={!!sectionState.goals.error} onRetry={() => loadSection("goals")}>
+                {goals.length === 0 ? (
+                  <div className="border border-border bg-card p-6 text-sm text-muted-foreground">Nog geen doelen vastgelegd.</div>
+                ) : (
+                  <div className="space-y-2">
+                    {goals.map((g) => (
+                      <div key={g.id} className="border border-border bg-card p-4">
+                        <div className="text-sm">{g.description}</div>
+                        <div className="text-[10px] uppercase tracking-widest text-muted-foreground mt-2">Status: {g.status}</div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </SectionGate>
             </div>
 
             <div>
               <h2 className="display-font text-3xl uppercase mb-6">Huiswerk</h2>
-              {homework.length === 0 ? (
-                <div className="border border-border bg-card p-6 text-sm text-muted-foreground">Geen huiswerk op dit moment.</div>
-              ) : (
-                <div className="space-y-2">
-                  {homework.map((h) => (
-                    <div key={h.id} className="border border-border bg-card p-4 flex items-start gap-3">
-                      <input
-                        type="checkbox"
-                        checked={h.status === "completed"}
-                        onChange={() => toggleHomework(h)}
-                        className="mt-1 h-4 w-4 accent-primary"
-                      />
-                      <div className="flex-1 min-w-0">
-                        <div className={`display-font text-lg uppercase ${h.status === "completed" ? "line-through text-muted-foreground" : ""}`}>{h.title}</div>
-                        {h.description && <div className="text-sm text-muted-foreground mt-1">{h.description}</div>}
-                        {h.video_url && (
-                          <a href={h.video_url} target="_blank" rel="noreferrer" className="text-xs uppercase tracking-widest text-primary mt-2 inline-block">
-                            Bekijk video →
-                          </a>
-                        )}
-                        {h.due_date && <div className="text-[10px] uppercase tracking-widest text-muted-foreground mt-2">Deadline: {fmtDate(h.due_date)}</div>}
+              <SectionGate loading={sectionState.homework.loading} error={!!sectionState.homework.error} onRetry={() => loadSection("homework")}>
+                {homework.length === 0 ? (
+                  <div className="border border-border bg-card p-6 text-sm text-muted-foreground">Geen huiswerk op dit moment.</div>
+                ) : (
+                  <div className="space-y-2">
+                    {homework.map((h) => (
+                      <div key={h.id} className="border border-border bg-card p-4 flex items-start gap-3">
+                        <input
+                          type="checkbox"
+                          checked={h.status === "completed"}
+                          onChange={() => toggleHomework(h)}
+                          className="mt-1 h-4 w-4 accent-primary"
+                        />
+                        <div className="flex-1 min-w-0">
+                          <div className={`display-font text-lg uppercase ${h.status === "completed" ? "line-through text-muted-foreground" : ""}`}>{h.title}</div>
+                          {h.description && <div className="text-sm text-muted-foreground mt-1">{h.description}</div>}
+                          {h.video_url && (
+                            <a href={h.video_url} target="_blank" rel="noreferrer" className="text-xs uppercase tracking-widest text-primary mt-2 inline-block">
+                              Bekijk video →
+                            </a>
+                          )}
+                          {h.due_date && <div className="text-[10px] uppercase tracking-widest text-muted-foreground mt-2">Deadline: {fmtDate(h.due_date)}</div>}
+                        </div>
                       </div>
-                    </div>
-                  ))}
-                </div>
-              )}
+                    ))}
+                  </div>
+                )}
+              </SectionGate>
             </div>
 
             <div>
