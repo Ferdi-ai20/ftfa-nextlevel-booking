@@ -450,20 +450,22 @@ const Dashboard = () => {
 
             <div>
               <h2 className="display-font text-3xl uppercase mb-6">Coach notities</h2>
-              {coachNotes.length === 0 ? (
-                <div className="border border-border bg-card p-6 text-sm text-muted-foreground">Nog geen notities van de coach.</div>
-              ) : (
-                <div className="space-y-2">
-                  {coachNotes.map((n) => (
-                    <div key={n.id} className="border border-border bg-card p-4">
-                      <div className="text-[10px] uppercase tracking-widest text-muted-foreground">
-                        {new Date(n.created_at).toLocaleDateString("nl-NL")}
+              <SectionGate loading={sectionState.coachNotes.loading} error={!!sectionState.coachNotes.error} onRetry={() => loadSection("coachNotes")}>
+                {coachNotes.length === 0 ? (
+                  <div className="border border-border bg-card p-6 text-sm text-muted-foreground">Nog geen notities van de coach.</div>
+                ) : (
+                  <div className="space-y-2">
+                    {coachNotes.map((n) => (
+                      <div key={n.id} className="border border-border bg-card p-4">
+                        <div className="text-[10px] uppercase tracking-widest text-muted-foreground">
+                          {new Date(n.created_at).toLocaleDateString("nl-NL")}
+                        </div>
+                        <div className="text-sm mt-1 whitespace-pre-wrap">{n.note}</div>
                       </div>
-                      <div className="text-sm mt-1 whitespace-pre-wrap">{n.note}</div>
-                    </div>
-                  ))}
-                </div>
-              )}
+                    ))}
+                  </div>
+                )}
+              </SectionGate>
             </div>
           </section>
         )}
