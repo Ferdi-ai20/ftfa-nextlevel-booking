@@ -1,75 +1,41 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef } from "react";
 import { useNavigate, Link } from "react-router-dom";
-import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { LoadingBlock, LoadingTimeoutFallback, useLoadingTimeout } from "@/components/LoadingState";
-import { timedWithTimeout } from "@/lib/timing";
 
 const PendingApproval = () => {
-  const { session, isAdmin, loading, signOut } = useAuth();
+  const { session, isAdmin, profileStatus, profileName, loading, signOut } = useAuth();
   const navigate = useNavigate();
-  const [status, setStatus] = useState<string>("pending");
-  const [name, setName] = useState("");
-  const [checking, setChecking] = useState(true);
-  const [checkFailed, setCheckFailed] = useState(false);
-  const [retryKey, setRetryKey] = useState(0);
-  const { timedOut, resetTimedOut } = useLoadingTimeout(loading || checking);
+  const redirectKeyRef = useRef<string | null>(null);
+  const sessionUserId = session?.user.id ?? null;
+  const { timedOut, resetTimedOut } = useLoadingTimeout(loading || (!!session && !isAdmin && !profileStatus));
 
   useEffect(() => {
-    if (!loading && !session) {
-      navigate("/auth", { replace: true });
-      return;
-    }
-    if (!loading && session && isAdmin) {
-      navigate("/admin", { replace: true });
-      return;
-    }
-    if (session) {
-      let cancelled = false;
-      setChecking(true);
-      setCheckFailed(false);
-      void (async () => {
-        try {
-          const { data, error } = await timedWithTimeout("PendingApproval.profileStatus", supabase
-            .from("profiles")
-            .select("full_name, status")
-            .eq("id", session.user.id)
-            .maybeSingle(), 3000);
-          if (error) throw error;
-          if (data?.status === "active") {
-            console.warn("Active player reached /wachten; redirecting to /dashboard", { userId: session.user.id });
-            navigate("/dashboard", { replace: true });
-            return;
-          }
-          if (cancelled) return;
-          setStatus(data?.status ?? "pending");
-          setName(data?.full_name ?? "");
-        } catch (error) {
-          console.error("PendingApproval profile check failed", error);
-          if (!cancelled) setCheckFailed(true);
-        } finally {
-          if (!cancelled) setChecking(false);
-        }
-      })();
-      return () => { cancelled = true; };
-    }
-  }, [session, isAdmin, loading, navigate, retryKey]);
+    if (loading) return;
+    const redirect = (to: string) => {
+      const key = `${sessionUserId ?? "anon"}:${to}`;
+      if (redirectKeyRef.current === key) return;
+      redirectKeyRef.current = key;
+      navigate(to, { replace: true });
+    };
+    if (!session) { redirect("/auth"); return; }
+    if (isAdmin) { redirect("/admin"); return; }
+    if (profileStatus === "active") { redirect("/dashboard"); }
+  }, [session, sessionUserId, isAdmin, profileStatus, loading, navigate]);
 
   const retry = () => {
     resetTimedOut();
-    setChecking(true);
-    setCheckFailed(false);
-    setRetryKey((key) => key + 1);
+    window.location.reload();
   };
 
-  if (checkFailed) return <LoadingTimeoutFallback onRetry={retry} fullScreen />;
-
-  if (loading || checking) {
+  if (loading || (!!session && !isAdmin && !profileStatus)) {
     if (timedOut) return <LoadingTimeoutFallback onRetry={retry} fullScreen />;
     return <LoadingBlock fullScreen />;
   }
 
-  const rejected = status === "rejected" || status === "archived";
+  if (!session || isAdmin || profileStatus === "active") return null;
+
+  const rejected = profileStatus === "rejected" || profileStatus === "archived";
 
   return (
     <main className="min-h-screen bg-background text-foreground">
@@ -88,7 +54,7 @@ const PendingApproval = () => {
           {!rejected ? (
             <>
               <p className="text-sm text-muted-foreground">
-                Hi{name ? ` ${name}` : ""}, je account is aangemaakt maar nog niet goedgekeurd door Ferdi.
+                Hi{profileName ? ` ${profileName}` : ""}, je account is aangemaakt maar nog niet goedgekeurd door Ferdi.
               </p>
               <p className="text-sm text-muted-foreground">
                 Zodra Ferdi je profiel heeft goedgekeurd, krijg je toegang tot je dashboard en kun je trainingen boeken. Je ontvangt hierover bericht per e-mail.

@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState, type ReactNode } from "react";
+import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { useNavigate, Link } from "react-router-dom";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
@@ -94,8 +94,10 @@ const SectionGate = ({ loading, error, onRetry, children }: { loading: boolean; 
 };
 
 const Dashboard = () => {
-  const { session, isAdmin, loading, signOut } = useAuth();
+  const { session, isAdmin, profileStatus: authProfileStatus, profileName: authProfileName, loading, signOut } = useAuth();
   const navigate = useNavigate();
+  const redirectKeyRef = useRef<string | null>(null);
+  const sessionUserId = session?.user.id ?? null;
   const [tab, setTab] = useState<TabId>("available");
 
   const [slots, setSlots] = useState<Slot[]>([]);
@@ -104,9 +106,8 @@ const Dashboard = () => {
   const [goals, setGoals] = useState<Goal[]>([]);
   const [homework, setHomework] = useState<Homework[]>([]);
   const [coachNotes, setCoachNotes] = useState<CoachNote[]>([]);
-  const [profileName, setProfileName] = useState("");
+  const [profileName, setProfileName] = useState(authProfileName);
   const [profilePhone, setProfilePhone] = useState("");
-  const [profileStatus, setProfileStatus] = useState<string | null>(null);
   const [sectionState, setSectionState] = useState<SectionLoadState>(initialSectionState);
   const [retryKey, setRetryKey] = useState(0);
   const [filter, setFilter] = useState<"all" | TrainingType>("all");
@@ -115,9 +116,16 @@ const Dashboard = () => {
 
   useEffect(() => {
     if (loading) return;
-    if (!session) { navigate("/auth?redirect=/dashboard", { replace: true }); return; }
-    if (isAdmin) { navigate("/admin", { replace: true }); return; }
-  }, [session, isAdmin, loading, navigate]);
+    const redirect = (to: string) => {
+      const key = `${sessionUserId ?? "anon"}:${to}`;
+      if (redirectKeyRef.current === key) return;
+      redirectKeyRef.current = key;
+      navigate(to, { replace: true });
+    };
+    if (!session) { redirect("/auth?redirect=/dashboard"); return; }
+    if (isAdmin) { redirect("/admin"); return; }
+    if (authProfileStatus && authProfileStatus !== "active") { redirect("/wachten"); }
+  }, [session, sessionUserId, isAdmin, authProfileStatus, loading, navigate]);
 
   const runSection = async <T,>(key: SectionKey, label: string, operation: PromiseLike<{ data: T; error: any }>, applyData: (data: T) => void, timeoutMs = 5000) => {
     setSectionState((state) => ({ ...state, [key]: { loading: true, error: null } }));
@@ -139,7 +147,6 @@ const Dashboard = () => {
       void runSection("profile", "Dashboard.profile", supabase.from("profiles").select("full_name, phone, status").eq("id", uid).maybeSingle(), (prof) => {
         setProfileName(prof?.full_name ?? "");
         setProfilePhone(prof?.phone ?? "");
-        setProfileStatus(prof?.status ?? "pending");
       }, 3000);
     } else if (key === "players") {
       void runSection("players", "Dashboard.players", supabase.from("players").select("id, player_name, birth_year, club, team, position").eq("parent_profile_id", uid), (ps) => setPlayers((ps ?? []) as Player[]));
@@ -164,20 +171,14 @@ const Dashboard = () => {
   };
 
   useEffect(() => {
-    if (!session || isAdmin || loading) return;
+    if (!session || isAdmin || loading || authProfileStatus !== "active") return;
     loadAll(session.user.id);
-  }, [session, isAdmin, loading, retryKey]);
-
-  useEffect(() => {
-    if (!loading && session && !isAdmin && profileStatus && profileStatus !== "active") {
-      navigate("/wachten", { replace: true });
-    }
-  }, [profileStatus, session, isAdmin, loading, navigate]);
+  }, [session?.user.id, isAdmin, loading, authProfileStatus, retryKey]);
 
   const retryLoad = () => setRetryKey((key) => key + 1);
 
   const book = async (s: Slot) => {
-    if (profileStatus !== "active") {
+    if (authProfileStatus !== "active") {
       toast.error("Je profiel moet eerst goedgekeurd worden door Ferdi.");
       return;
     }
@@ -279,7 +280,7 @@ const Dashboard = () => {
 
   if (loading && !session) return <LoadingBlock fullScreen />;
   if (!session || isAdmin) return null;
-  if (profileStatus && profileStatus !== "active") return <LoadingBlock fullScreen />;
+  if (authProfileStatus !== "active") return <LoadingBlock fullScreen />;
 
   return (
     <main className="min-h-screen bg-background text-foreground">

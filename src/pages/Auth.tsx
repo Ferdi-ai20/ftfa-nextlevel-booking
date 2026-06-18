@@ -1,14 +1,15 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
-import { timedWithTimeout } from "@/lib/timing";
 
 const Auth = () => {
   const navigate = useNavigate();
-  const { session, loading } = useAuth();
+  const { session, isAdmin, profileStatus, loading } = useAuth();
+  const routedSessionRef = useRef<string | null>(null);
+  const sessionUserId = session?.user.id ?? null;
 
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -16,40 +17,16 @@ const Auth = () => {
   const [forgot, setForgot] = useState(false);
   const [routeError, setRouteError] = useState("");
 
-  const resolveAndNavigate = async (userId: string) => {
-    const [roleRes, profileRes] = await Promise.all([
-      timedWithTimeout("Auth.roleQuery", supabase
-        .from("user_roles")
-        .select("role")
-        .eq("user_id", userId)
-        .eq("role", "admin")
-        .maybeSingle(), 3000),
-      timedWithTimeout("Auth.profileStatusQuery", supabase
-        .from("profiles")
-        .select("status")
-        .eq("id", userId)
-        .maybeSingle(), 3000),
-    ]);
-
-    if (roleRes.error) throw roleRes.error;
-    if (profileRes.error) throw profileRes.error;
-
-    if (roleRes.data?.role === "admin") {
-      navigate("/admin", { replace: true });
+  useEffect(() => {
+    if (loading || !session || busy) return;
+    if (!sessionUserId || routedSessionRef.current === sessionUserId) return;
+    if (!isAdmin && !profileStatus) {
+      setRouteError("Je sessie is actief, maar je toegang kon niet snel genoeg worden gecontroleerd. Probeer opnieuw.");
       return;
     }
-
-    navigate(profileRes.data?.status === "active" ? "/dashboard" : "/wachten", { replace: true });
-  };
-
-  useEffect(() => {
-    if (!loading && session && !busy) {
-      void resolveAndNavigate(session.user.id).catch((err) => {
-        console.error("Auth existing-session route resolution failed", err);
-        setRouteError("Je sessie is actief, maar je toegang kon niet snel genoeg worden gecontroleerd. Probeer opnieuw.");
-      });
-    }
-  }, [session, loading, busy]);
+    routedSessionRef.current = sessionUserId;
+    navigate(isAdmin ? "/admin" : profileStatus === "active" ? "/dashboard" : "/wachten", { replace: true });
+  }, [session, sessionUserId, isAdmin, profileStatus, loading, busy, navigate]);
 
   const submit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -63,10 +40,9 @@ const Auth = () => {
       });
       if (error) throw error;
       if (!data.user) throw new Error("Geen gebruiker gevonden na inloggen.");
-      await resolveAndNavigate(data.user.id);
-    } catch (err: any) {
-      const message = err?.message || "Inloggen mislukt.";
-      setRouteError(message.includes("timed out") ? "De toegangscontrole duurde te lang. Probeer opnieuw." : message);
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : "Inloggen mislukt.";
+      setRouteError(message);
       toast.error(message);
     } finally {
       setBusy(false);
