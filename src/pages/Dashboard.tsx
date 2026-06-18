@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState, type ReactNode } from "react";
 import { useNavigate, Link } from "react-router-dom";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
@@ -81,7 +81,7 @@ const initialSectionState: SectionLoadState = {
 
 const sectionErrorMessage = "Dit onderdeel kon niet snel genoeg worden geladen.";
 
-const SectionGate = ({ loading, error, onRetry, children }: { loading: boolean; error: boolean; onRetry: () => void; children: React.ReactNode }) => {
+const SectionGate = ({ loading, error, onRetry, children }: { loading: boolean; error: boolean; onRetry: () => void; children: ReactNode }) => {
   const { timedOut, resetTimedOut } = useLoadingTimeout(loading);
   const retry = () => {
     resetTimedOut();
