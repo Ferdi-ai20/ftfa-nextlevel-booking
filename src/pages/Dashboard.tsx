@@ -5,6 +5,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { notify, ADMIN_EMAIL } from "@/lib/notify";
 import { LoadingBlock, LoadingTimeoutFallback, useLoadingTimeout } from "@/components/LoadingState";
+import { timedWithTimeout } from "@/lib/timing";
 import {
   TrainingType,
   SlotVisibility,
@@ -65,6 +66,32 @@ const TABS = [
   { id: "profile", label: "Profiel" },
 ] as const;
 type TabId = typeof TABS[number]["id"];
+type SectionKey = "profile" | "players" | "slots" | "bookings" | "goals" | "homework" | "coachNotes";
+type SectionLoadState = Record<SectionKey, { loading: boolean; error: string | null }>;
+
+const initialSectionState: SectionLoadState = {
+  profile: { loading: true, error: null },
+  players: { loading: true, error: null },
+  slots: { loading: true, error: null },
+  bookings: { loading: true, error: null },
+  goals: { loading: true, error: null },
+  homework: { loading: true, error: null },
+  coachNotes: { loading: true, error: null },
+};
+
+const sectionErrorMessage = "Dit onderdeel kon niet snel genoeg worden geladen.";
+
+const SectionGate = ({ loading, error, onRetry, children }: { loading: boolean; error: boolean; onRetry: () => void; children: React.ReactNode }) => {
+  const { timedOut, resetTimedOut } = useLoadingTimeout(loading);
+  const retry = () => {
+    resetTimedOut();
+    onRetry();
+  };
+
+  if (loading) return timedOut ? <LoadingTimeoutFallback onRetry={retry} showSignOut={false} /> : <LoadingBlock />;
+  if (error) return <LoadingTimeoutFallback onRetry={retry} showSignOut={false} />;
+  return <>{children}</>;
+};
 
 const Dashboard = () => {
   const { session, isAdmin, loading, signOut } = useAuth();
