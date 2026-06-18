@@ -476,33 +476,37 @@ const Dashboard = () => {
               <div className="text-[11px] uppercase tracking-[0.3em] text-primary">/ Profiel</div>
               <h2 className="display-font text-3xl uppercase mt-2 mb-6">Mijn gegevens</h2>
             </div>
-            <div className="border border-border bg-card p-5 space-y-2">
-              <div className="text-[10px] uppercase tracking-widest text-muted-foreground">Naam</div>
-              <div className="text-sm">{profileName || "—"}</div>
-              <div className="text-[10px] uppercase tracking-widest text-muted-foreground pt-3">E-mail</div>
-              <div className="text-sm">{session.user.email}</div>
-              <div className="text-[10px] uppercase tracking-widest text-muted-foreground pt-3">Telefoon</div>
-              <div className="text-sm">{profilePhone || "—"}</div>
-            </div>
-
-            {players.length > 0 && (
-              <div>
-                <h3 className="display-font text-2xl uppercase mb-4">Speler(s)</h3>
-                <div className="space-y-2">
-                  {players.map((p) => (
-                    <div key={p.id} className="border border-border bg-card p-5">
-                      <div className="display-font text-xl uppercase">{p.player_name}</div>
-                      <div className="text-xs text-muted-foreground mt-2 space-y-1">
-                        {p.birth_year && <div>Geboortejaar: {p.birth_year}</div>}
-                        <div>Club: {p.club ?? "—"}</div>
-                        <div>Team: {p.team ?? "—"}</div>
-                        <div>Positie: {p.position ?? "—"}</div>
-                      </div>
-                    </div>
-                  ))}
-                </div>
+            <SectionGate loading={sectionState.profile.loading} error={!!sectionState.profile.error} onRetry={() => loadSection("profile")}>
+              <div className="border border-border bg-card p-5 space-y-2">
+                <div className="text-[10px] uppercase tracking-widest text-muted-foreground">Naam</div>
+                <div className="text-sm">{profileName || "—"}</div>
+                <div className="text-[10px] uppercase tracking-widest text-muted-foreground pt-3">E-mail</div>
+                <div className="text-sm">{session.user.email}</div>
+                <div className="text-[10px] uppercase tracking-widest text-muted-foreground pt-3">Telefoon</div>
+                <div className="text-sm">{profilePhone || "—"}</div>
               </div>
-            )}
+            </SectionGate>
+
+            <SectionGate loading={sectionState.players.loading} error={!!sectionState.players.error} onRetry={() => loadSection("players")}>
+              {players.length > 0 && (
+                <div>
+                  <h3 className="display-font text-2xl uppercase mb-4">Speler(s)</h3>
+                  <div className="space-y-2">
+                    {players.map((p) => (
+                      <div key={p.id} className="border border-border bg-card p-5">
+                        <div className="display-font text-xl uppercase">{p.player_name}</div>
+                        <div className="text-xs text-muted-foreground mt-2 space-y-1">
+                          {p.birth_year && <div>Geboortejaar: {p.birth_year}</div>}
+                          <div>Club: {p.club ?? "—"}</div>
+                          <div>Team: {p.team ?? "—"}</div>
+                          <div>Positie: {p.position ?? "—"}</div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </SectionGate>
 
             <p className="text-xs text-muted-foreground">
               Wil je gegevens wijzigen? Neem contact op met Ferdi via WhatsApp:{" "}
