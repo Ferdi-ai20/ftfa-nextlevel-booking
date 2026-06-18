@@ -322,32 +322,34 @@ const Dashboard = () => {
               </select>
             </div>
 
-            {filteredSlots.length === 0 ? (
-              <div className="border border-border bg-card p-6 text-sm text-muted-foreground">Geen beschikbare trainingen.</div>
-            ) : (
-              <div className="grid sm:grid-cols-2 gap-3">
-                {filteredSlots.map((s) => (
-                  <div key={s.id} className="border border-border bg-card p-4">
-                    <div className="display-font text-lg uppercase">{fmtDate(s.date)}</div>
-                    <div className="font-mono text-sm mt-1">{fmtTime(s.start_time)} – {fmtTime(s.end_time)}</div>
-                    <div className="text-xs uppercase tracking-widest text-muted-foreground mt-2">
-                      {trainingTypeLabel(s.training_type)}{s.location ? ` · ${s.location}` : ""}
+            <SectionGate loading={sectionState.slots.loading || sectionState.bookings.loading} error={!!sectionState.slots.error || !!sectionState.bookings.error} onRetry={() => { loadSection("slots"); loadSection("bookings"); }}>
+              {filteredSlots.length === 0 ? (
+                <div className="border border-border bg-card p-6 text-sm text-muted-foreground">Geen beschikbare trainingen.</div>
+              ) : (
+                <div className="grid sm:grid-cols-2 gap-3">
+                  {filteredSlots.map((s) => (
+                    <div key={s.id} className="border border-border bg-card p-4">
+                      <div className="display-font text-lg uppercase">{fmtDate(s.date)}</div>
+                      <div className="font-mono text-sm mt-1">{fmtTime(s.start_time)} – {fmtTime(s.end_time)}</div>
+                      <div className="text-xs uppercase tracking-widest text-muted-foreground mt-2">
+                        {trainingTypeLabel(s.training_type)}{s.location ? ` · ${s.location}` : ""}
+                      </div>
+                      {s.player_note && <div className="text-xs text-muted-foreground mt-2 italic">"{s.player_note}"</div>}
+                      <div className="text-[10px] uppercase tracking-widest text-muted-foreground mt-2">
+                        Max {s.max_players} {s.max_players === 1 ? "speler" : "spelers"}
+                      </div>
+                      <button
+                        disabled={busy === s.id}
+                        onClick={() => book(s)}
+                        className="mt-3 w-full bg-primary text-primary-foreground px-3 py-2 text-xs uppercase tracking-widest font-semibold hover:bg-primary/90 disabled:opacity-40"
+                      >
+                        {busy === s.id ? "Bezig…" : "Boek training"}
+                      </button>
                     </div>
-                    {s.player_note && <div className="text-xs text-muted-foreground mt-2 italic">"{s.player_note}"</div>}
-                    <div className="text-[10px] uppercase tracking-widest text-muted-foreground mt-2">
-                      Max {s.max_players} {s.max_players === 1 ? "speler" : "spelers"}
-                    </div>
-                    <button
-                      disabled={busy === s.id}
-                      onClick={() => book(s)}
-                      className="mt-3 w-full bg-primary text-primary-foreground px-3 py-2 text-xs uppercase tracking-widest font-semibold hover:bg-primary/90 disabled:opacity-40"
-                    >
-                      {busy === s.id ? "Bezig…" : "Boek training"}
-                    </button>
-                  </div>
-                ))}
-              </div>
-            )}
+                  ))}
+                </div>
+              )}
+            </SectionGate>
           </section>
         )}
 
