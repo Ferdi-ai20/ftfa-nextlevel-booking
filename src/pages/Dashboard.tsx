@@ -97,6 +97,7 @@ const Dashboard = () => {
   const { session, isAdmin, profileStatus: authProfileStatus, profileName: authProfileName, loading, signOut } = useAuth();
   const navigate = useNavigate();
   const redirectKeyRef = useRef<string | null>(null);
+  const sessionUserId = session?.user.id ?? null;
   const [tab, setTab] = useState<TabId>("available");
 
   const [slots, setSlots] = useState<Slot[]>([]);
@@ -116,7 +117,7 @@ const Dashboard = () => {
   useEffect(() => {
     if (loading) return;
     const redirect = (to: string) => {
-      const key = `${session?.user.id ?? "anon"}:${to}`;
+      const key = `${sessionUserId ?? "anon"}:${to}`;
       if (redirectKeyRef.current === key) return;
       redirectKeyRef.current = key;
       navigate(to, { replace: true });
@@ -124,7 +125,7 @@ const Dashboard = () => {
     if (!session) { redirect("/auth?redirect=/dashboard"); return; }
     if (isAdmin) { redirect("/admin"); return; }
     if (authProfileStatus && authProfileStatus !== "active") { redirect("/wachten"); }
-  }, [session?.user.id, isAdmin, authProfileStatus, loading, navigate]);
+  }, [session, sessionUserId, isAdmin, authProfileStatus, loading, navigate]);
 
   const runSection = async <T,>(key: SectionKey, label: string, operation: PromiseLike<{ data: T; error: any }>, applyData: (data: T) => void, timeoutMs = 5000) => {
     setSectionState((state) => ({ ...state, [key]: { loading: true, error: null } }));
