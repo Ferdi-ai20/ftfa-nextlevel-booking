@@ -357,39 +357,41 @@ const Dashboard = () => {
           <section>
             <div className="text-[11px] uppercase tracking-[0.3em] text-primary">/ Mijn boekingen</div>
             <h2 className="display-font text-3xl uppercase mt-2 mb-6">Aankomende trainingen</h2>
-            {myUpcoming.length === 0 ? (
-              <div className="border border-border bg-card p-6 text-sm text-muted-foreground">Nog geen aankomende trainingen.</div>
-            ) : (
-              <div className="space-y-2">
-                {myUpcoming.map(({ b, s }) => {
-                  const hours = hoursUntil(s.date, s.start_time);
-                  const canCancel = hours >= 48;
-                  return (
-                    <div key={b.id} className="border border-border bg-card p-4 flex items-center justify-between gap-3">
-                      <div>
-                        <div className="display-font text-xl uppercase">{fmtDate(s.date)}</div>
-                        <div className="text-xs uppercase tracking-widest text-muted-foreground mt-1">
-                          {fmtTime(s.start_time)}–{fmtTime(s.end_time)} · {trainingTypeLabel(s.training_type)}{s.location ? ` · ${s.location}` : ""}
+            <SectionGate loading={sectionState.bookings.loading || sectionState.slots.loading} error={!!sectionState.bookings.error || !!sectionState.slots.error} onRetry={() => { loadSection("bookings"); loadSection("slots"); }}>
+              {myUpcoming.length === 0 ? (
+                <div className="border border-border bg-card p-6 text-sm text-muted-foreground">Nog geen aankomende trainingen.</div>
+              ) : (
+                <div className="space-y-2">
+                  {myUpcoming.map(({ b, s }) => {
+                    const hours = hoursUntil(s.date, s.start_time);
+                    const canCancel = hours >= 48;
+                    return (
+                      <div key={b.id} className="border border-border bg-card p-4 flex items-center justify-between gap-3">
+                        <div>
+                          <div className="display-font text-xl uppercase">{fmtDate(s.date)}</div>
+                          <div className="text-xs uppercase tracking-widest text-muted-foreground mt-1">
+                            {fmtTime(s.start_time)}–{fmtTime(s.end_time)} · {trainingTypeLabel(s.training_type)}{s.location ? ` · ${s.location}` : ""}
+                          </div>
+                          <div className="text-[10px] uppercase tracking-widest mt-1 text-primary">Bevestigd</div>
                         </div>
-                        <div className="text-[10px] uppercase tracking-widest mt-1 text-primary">Bevestigd</div>
+                        {canCancel ? (
+                          <button
+                            onClick={() => setCancelTarget({ b, s })}
+                            className="text-[10px] uppercase tracking-widest border border-destructive/40 text-destructive px-3 py-1.5 hover:bg-destructive/10"
+                          >
+                            Annuleren
+                          </button>
+                        ) : (
+                          <div className="text-[10px] uppercase tracking-widest text-muted-foreground text-right max-w-[160px]">
+                            Annuleren niet meer mogelijk (&lt; 48u). Neem contact op met Ferdi.
+                          </div>
+                        )}
                       </div>
-                      {canCancel ? (
-                        <button
-                          onClick={() => setCancelTarget({ b, s })}
-                          className="text-[10px] uppercase tracking-widest border border-destructive/40 text-destructive px-3 py-1.5 hover:bg-destructive/10"
-                        >
-                          Annuleren
-                        </button>
-                      ) : (
-                        <div className="text-[10px] uppercase tracking-widest text-muted-foreground text-right max-w-[160px]">
-                          Annuleren niet meer mogelijk (&lt; 48u). Neem contact op met Ferdi.
-                        </div>
-                      )}
-                    </div>
-                  );
-                })}
-              </div>
-            )}
+                    );
+                  })}
+                </div>
+              )}
+            </SectionGate>
           </section>
         )}
 
