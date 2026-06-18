@@ -164,9 +164,9 @@ const Dashboard = () => {
   };
 
   useEffect(() => {
-    if (!session || isAdmin) return;
+    if (!session || isAdmin || loading) return;
     loadAll(session.user.id);
-  }, [session, isAdmin, retryKey]);
+  }, [session, isAdmin, loading, retryKey]);
 
   useEffect(() => {
     if (!loading && session && !isAdmin && profileStatus && profileStatus !== "active") {
