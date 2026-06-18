@@ -7,12 +7,13 @@ const PendingApproval = () => {
   const { session, isAdmin, profileStatus, profileName, loading, signOut } = useAuth();
   const navigate = useNavigate();
   const redirectKeyRef = useRef<string | null>(null);
+  const sessionUserId = session?.user.id ?? null;
   const { timedOut, resetTimedOut } = useLoadingTimeout(loading || (!!session && !isAdmin && !profileStatus));
 
   useEffect(() => {
     if (loading) return;
     const redirect = (to: string) => {
-      const key = `${session?.user.id ?? "anon"}:${to}`;
+      const key = `${sessionUserId ?? "anon"}:${to}`;
       if (redirectKeyRef.current === key) return;
       redirectKeyRef.current = key;
       navigate(to, { replace: true });
@@ -20,7 +21,7 @@ const PendingApproval = () => {
     if (!session) { redirect("/auth"); return; }
     if (isAdmin) { redirect("/admin"); return; }
     if (profileStatus === "active") { redirect("/dashboard"); }
-  }, [session?.user.id, isAdmin, profileStatus, loading, navigate]);
+  }, [session, sessionUserId, isAdmin, profileStatus, loading, navigate]);
 
   const retry = () => {
     resetTimedOut();
