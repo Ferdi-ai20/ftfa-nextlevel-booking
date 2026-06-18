@@ -24,11 +24,11 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [isAdmin, setIsAdmin] = useState(false);
   const [loading, setLoading] = useState(true);
   const lastCheckedUserId = useRef<string | null>(null);
-  const inFlightAdminCheck = useRef<Promise<void> | null>(null);
+  const inFlightAdminCheck = useRef<{ uid: string; promise: Promise<void> } | null>(null);
 
   const checkAdmin = async (uid: string) => {
-    if (inFlightAdminCheck.current) return inFlightAdminCheck.current;
-    inFlightAdminCheck.current = (async () => {
+    if (inFlightAdminCheck.current?.uid === uid) return inFlightAdminCheck.current.promise;
+    const promise = (async () => {
     try {
       const { data } = await timedWithTimeout("useAuth.checkAdmin", supabase
         .from("user_roles")
@@ -45,10 +45,11 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       if (lastCheckedUserId.current === uid) setIsAdmin(false);
     } finally {
       if (lastCheckedUserId.current === uid) setLoading(false);
-      inFlightAdminCheck.current = null;
+      if (inFlightAdminCheck.current?.uid === uid) inFlightAdminCheck.current = null;
     }
     })();
-    return inFlightAdminCheck.current;
+    inFlightAdminCheck.current = { uid, promise };
+    return promise;
   };
 
   useEffect(() => {
