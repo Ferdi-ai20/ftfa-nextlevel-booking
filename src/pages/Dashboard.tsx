@@ -94,10 +94,12 @@ const SectionGate = ({ loading, error, onRetry, children }: { loading: boolean; 
 };
 
 const Dashboard = () => {
-  const { session, isAdmin, profileStatus: authProfileStatus, profileName: authProfileName, loading, signOut } = useAuth();
+  const { session, isAdmin, profileStatus: authProfileStatus, profileName: authProfileName, loading, accessResolved, accessError, signOut } = useAuth();
   const navigate = useNavigate();
   const redirectKeyRef = useRef<string | null>(null);
   const sessionUserId = session?.user.id ?? null;
+  const accessPending = !!session && (!accessResolved || !!accessError);
+  const { timedOut, resetTimedOut } = useLoadingTimeout(loading || accessPending);
   const [tab, setTab] = useState<TabId>("available");
 
   const [slots, setSlots] = useState<Slot[]>([]);
@@ -123,9 +125,10 @@ const Dashboard = () => {
       navigate(to, { replace: true });
     };
     if (!session) { redirect("/auth?redirect=/dashboard"); return; }
+    if (!accessResolved || accessError) return;
     if (isAdmin) { redirect("/admin"); return; }
     if (authProfileStatus && authProfileStatus !== "active") { redirect("/wachten"); }
-  }, [session, sessionUserId, isAdmin, authProfileStatus, loading, navigate]);
+  }, [session, sessionUserId, isAdmin, authProfileStatus, loading, accessResolved, accessError, navigate]);
 
   const runSection = async <T,>(key: SectionKey, label: string, operation: PromiseLike<{ data: T; error: any }>, applyData: (data: T) => void, timeoutMs = 5000) => {
     setSectionState((state) => ({ ...state, [key]: { loading: true, error: null } }));
@@ -171,11 +174,15 @@ const Dashboard = () => {
   };
 
   useEffect(() => {
-    if (!session || isAdmin || loading || authProfileStatus !== "active") return;
+    if (!session || isAdmin || loading || !accessResolved || accessError || authProfileStatus !== "active") return;
     loadAll(session.user.id);
-  }, [session?.user.id, isAdmin, loading, authProfileStatus, retryKey]);
+  }, [session?.user.id, isAdmin, loading, accessResolved, accessError, authProfileStatus, retryKey]);
 
   const retryLoad = () => setRetryKey((key) => key + 1);
+  const retryAccess = () => {
+    resetTimedOut();
+    window.location.reload();
+  };
 
   const book = async (s: Slot) => {
     if (authProfileStatus !== "active") {
@@ -279,6 +286,10 @@ const Dashboard = () => {
     [bookings, slots]);
 
   if (loading && !session) return <LoadingBlock fullScreen />;
+  if (accessPending) {
+    if (timedOut || accessError) return <LoadingTimeoutFallback onRetry={retryAccess} fullScreen />;
+    return <LoadingBlock fullScreen />;
+  }
   if (!session || isAdmin) return null;
   if (authProfileStatus !== "active") return <LoadingBlock fullScreen />;
 

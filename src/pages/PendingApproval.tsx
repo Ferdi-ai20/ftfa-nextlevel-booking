@@ -4,11 +4,11 @@ import { useAuth } from "@/hooks/useAuth";
 import { LoadingBlock, LoadingTimeoutFallback, useLoadingTimeout } from "@/components/LoadingState";
 
 const PendingApproval = () => {
-  const { session, isAdmin, profileStatus, profileName, loading, signOut } = useAuth();
+  const { session, isAdmin, profileStatus, profileName, loading, accessResolved, accessError, signOut } = useAuth();
   const navigate = useNavigate();
   const redirectKeyRef = useRef<string | null>(null);
   const sessionUserId = session?.user.id ?? null;
-  const { timedOut, resetTimedOut } = useLoadingTimeout(loading || (!!session && !isAdmin && !profileStatus));
+  const { timedOut, resetTimedOut } = useLoadingTimeout(loading || (!!session && (!accessResolved || !!accessError)));
 
   useEffect(() => {
     if (loading) return;
@@ -19,17 +19,18 @@ const PendingApproval = () => {
       navigate(to, { replace: true });
     };
     if (!session) { redirect("/auth"); return; }
+    if (!accessResolved || accessError) return;
     if (isAdmin) { redirect("/admin"); return; }
     if (profileStatus === "active") { redirect("/dashboard"); }
-  }, [session, sessionUserId, isAdmin, profileStatus, loading, navigate]);
+  }, [session, sessionUserId, isAdmin, profileStatus, loading, accessResolved, accessError, navigate]);
 
   const retry = () => {
     resetTimedOut();
     window.location.reload();
   };
 
-  if (loading || (!!session && !isAdmin && !profileStatus)) {
-    if (timedOut) return <LoadingTimeoutFallback onRetry={retry} fullScreen />;
+  if (loading || (!!session && (!accessResolved || accessError))) {
+    if (timedOut || accessError) return <LoadingTimeoutFallback onRetry={retry} fullScreen />;
     return <LoadingBlock fullScreen />;
   }
 

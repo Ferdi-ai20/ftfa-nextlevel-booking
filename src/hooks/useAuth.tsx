@@ -10,6 +10,8 @@ type AuthCtx = {
   profileStatus: string | null;
   profileName: string;
   loading: boolean;
+  accessResolved: boolean;
+  accessError: string | null;
   signOut: () => Promise<void>;
 };
 
@@ -20,6 +22,8 @@ const Ctx = createContext<AuthCtx>({
   profileStatus: null,
   profileName: "",
   loading: true,
+  accessResolved: false,
+  accessError: null,
   signOut: async () => {},
 });
 
@@ -29,6 +33,8 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [profileStatus, setProfileStatus] = useState<string | null>(null);
   const [profileName, setProfileName] = useState("");
   const [loading, setLoading] = useState(true);
+  const [accessResolved, setAccessResolved] = useState(false);
+  const [accessError, setAccessError] = useState<string | null>(null);
   const currentUserIdRef = useRef<string | null>(null);
   const accessResolvedRef = useRef(false);
   const inFlightAccessCheck = useRef<{ uid: string; promise: Promise<void> } | null>(null);
@@ -53,12 +59,15 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
         if (roleRes.error) throw roleRes.error;
         if (profileRes.error) throw profileRes.error;
+        if (!profileRes.data?.status) throw new Error("Profielstatus kon niet worden bepaald.");
 
         if (currentUserIdRef.current === uid) {
           setIsAdmin(roleRes.data?.role === "admin");
-          setProfileStatus(profileRes.data?.status ?? "pending");
+          setProfileStatus(profileRes.data.status);
           setProfileName(profileRes.data?.full_name ?? "");
           accessResolvedRef.current = true;
+          setAccessResolved(true);
+          setAccessError(null);
         }
       } catch (e) {
         console.error("resolveAccess failed", e);
@@ -67,6 +76,8 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
           setProfileStatus(null);
           setProfileName("");
           accessResolvedRef.current = false;
+          setAccessResolved(false);
+          setAccessError("Je toegang kon niet worden gecontroleerd. Probeer opnieuw.");
         }
       } finally {
         if (currentUserIdRef.current === uid) {
@@ -93,17 +104,23 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         // Gate consumers until role and profile status are both resolved.
         if (!isSameResolvedUser) {
           accessResolvedRef.current = false;
+          setAccessResolved(false);
+          setAccessError(null);
           setLoading(true);
           setIsAdmin(false);
           setProfileStatus(null);
           setProfileName("");
           setTimeout(() => resolveAccess(uid), 0);
         } else {
+          setAccessResolved(true);
+          setAccessError(null);
           setLoading(false);
         }
       } else {
         currentUserIdRef.current = null;
         accessResolvedRef.current = false;
+        setAccessResolved(false);
+        setAccessError(null);
         setIsAdmin(false);
         setProfileStatus(null);
         setProfileName("");
@@ -133,6 +150,8 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     inFlightAccessCheck.current = null;
     currentUserIdRef.current = null;
     accessResolvedRef.current = false;
+    setAccessResolved(false);
+    setAccessError(null);
     setSession(null);
     setIsAdmin(false);
     setProfileStatus(null);
@@ -141,7 +160,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   };
 
   return (
-    <Ctx.Provider value={{ session, user: session?.user ?? null, isAdmin, profileStatus, profileName, loading, signOut }}>
+    <Ctx.Provider value={{ session, user: session?.user ?? null, isAdmin, profileStatus, profileName, loading, accessResolved, accessError, signOut }}>
       {children}
     </Ctx.Provider>
   );
