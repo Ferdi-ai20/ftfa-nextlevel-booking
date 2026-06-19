@@ -77,7 +77,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
           setProfileName("");
           accessResolvedRef.current = false;
           setAccessResolved(false);
-          setAccessError(e instanceof Error ? e.message : "Je toegang kon niet worden gecontroleerd. Probeer opnieuw.");
+          setAccessError("Je toegang kon niet worden gecontroleerd. Probeer opnieuw.");
         }
       } finally {
         if (currentUserIdRef.current === uid) {
