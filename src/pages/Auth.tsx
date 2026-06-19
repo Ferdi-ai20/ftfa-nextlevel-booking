@@ -7,7 +7,7 @@ import { useAuth } from "@/hooks/useAuth";
 
 const Auth = () => {
   const navigate = useNavigate();
-  const { session, isAdmin, profileStatus, loading } = useAuth();
+  const { session, isAdmin, profileStatus, loading, accessResolved, accessError } = useAuth();
   const routedSessionRef = useRef<string | null>(null);
   const sessionUserId = session?.user.id ?? null;
 
@@ -19,14 +19,15 @@ const Auth = () => {
 
   useEffect(() => {
     if (loading || !session || busy) return;
-    if (!sessionUserId || routedSessionRef.current === sessionUserId) return;
-    if (!isAdmin && !profileStatus) {
-      setRouteError("Je sessie is actief, maar je toegang kon niet snel genoeg worden gecontroleerd. Probeer opnieuw.");
+    if (accessError) {
+      setRouteError(accessError);
       return;
     }
+    if (!accessResolved) return;
+    if (!sessionUserId || routedSessionRef.current === sessionUserId) return;
     routedSessionRef.current = sessionUserId;
     navigate(isAdmin ? "/admin" : profileStatus === "active" ? "/dashboard" : "/wachten", { replace: true });
-  }, [session, sessionUserId, isAdmin, profileStatus, loading, busy, navigate]);
+  }, [session, sessionUserId, isAdmin, profileStatus, loading, accessResolved, accessError, busy, navigate]);
 
   const submit = async (e: React.FormEvent) => {
     e.preventDefault();
