@@ -112,6 +112,8 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
           setProfileName("");
           setTimeout(() => resolveAccess(uid), 0);
         } else {
+          setAccessResolved(true);
+          setAccessError(null);
           setLoading(false);
         }
       } else {
