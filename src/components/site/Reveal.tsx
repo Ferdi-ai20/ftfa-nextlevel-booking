@@ -4,15 +4,14 @@ type RevealProps = {
   children: ReactNode;
   delay?: number;
   className?: string;
-  as?: keyof JSX.IntrinsicElements;
 };
 
 /**
  * Reveal: subtle fade + slight upward translate when the element
  * enters the viewport. Respects prefers-reduced-motion.
  */
-const Reveal = ({ children, delay = 0, className = "", as: Tag = "div" }: RevealProps) => {
-  const ref = useRef<HTMLElement | null>(null);
+const Reveal = ({ children, delay = 0, className = "" }: RevealProps) => {
+  const ref = useRef<HTMLDivElement | null>(null);
   const [visible, setVisible] = useState(false);
 
   useEffect(() => {
@@ -42,8 +41,8 @@ const Reveal = ({ children, delay = 0, className = "", as: Tag = "div" }: Reveal
   }, []);
 
   return (
-    <Tag
-      ref={ref as never}
+    <div
+      ref={ref}
       style={{ transitionDelay: visible ? `${delay}ms` : "0ms" }}
       className={[
         "transition-all duration-[900ms] ease-[cubic-bezier(0.22,1,0.36,1)] will-change-transform",
@@ -52,7 +51,7 @@ const Reveal = ({ children, delay = 0, className = "", as: Tag = "div" }: Reveal
       ].join(" ")}
     >
       {children}
-    </Tag>
+    </div>
   );
 };
 
