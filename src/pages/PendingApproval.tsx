@@ -30,7 +30,7 @@ const PendingApproval = () => {
   };
 
   if (loading || (!!session && (!accessResolved || accessError))) {
-    if (timedOut) return <LoadingTimeoutFallback onRetry={retry} fullScreen />;
+    if (timedOut || accessError) return <LoadingTimeoutFallback onRetry={retry} fullScreen />;
     return <LoadingBlock fullScreen />;
   }
 
