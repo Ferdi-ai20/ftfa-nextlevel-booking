@@ -98,6 +98,8 @@ const Dashboard = () => {
   const navigate = useNavigate();
   const redirectKeyRef = useRef<string | null>(null);
   const sessionUserId = session?.user.id ?? null;
+  const accessPending = !!session && (!accessResolved || !!accessError);
+  const { timedOut, resetTimedOut } = useLoadingTimeout(loading || accessPending);
   const [tab, setTab] = useState<TabId>("available");
 
   const [slots, setSlots] = useState<Slot[]>([]);
@@ -177,6 +179,10 @@ const Dashboard = () => {
   }, [session?.user.id, isAdmin, loading, accessResolved, accessError, authProfileStatus, retryKey]);
 
   const retryLoad = () => setRetryKey((key) => key + 1);
+  const retryAccess = () => {
+    resetTimedOut();
+    window.location.reload();
+  };
 
   const book = async (s: Slot) => {
     if (authProfileStatus !== "active") {
@@ -280,7 +286,10 @@ const Dashboard = () => {
     [bookings, slots]);
 
   if (loading && !session) return <LoadingBlock fullScreen />;
-  if (session && (!accessResolved || accessError)) return <LoadingBlock fullScreen />;
+  if (accessPending) {
+    if (timedOut || accessError) return <LoadingTimeoutFallback onRetry={retryAccess} fullScreen />;
+    return <LoadingBlock fullScreen />;
+  }
   if (!session || isAdmin) return null;
   if (authProfileStatus !== "active") return <LoadingBlock fullScreen />;
 
