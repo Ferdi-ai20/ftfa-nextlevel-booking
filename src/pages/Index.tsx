@@ -6,26 +6,25 @@ import Framework from "@/components/site/Framework";
 import Services from "@/components/site/Services";
 import Coach from "@/components/site/Coach";
 import PublicSlots from "@/components/site/PublicSlots";
-// Application form will be rebuilt in Phase 4 per the new spec
 import Proof from "@/components/site/Proof";
 import CTA from "@/components/site/CTA";
 import Footer from "@/components/site/Footer";
 import StickyCTA from "@/components/site/StickyCTA";
+import Reveal from "@/components/site/Reveal";
 
 const Index = () => {
   return (
     <main className="bg-background text-foreground">
       <Nav />
       <Hero />
-      <About />
-      <Philosophy />
-      <Framework />
-      <Services />
-      <Coach />
-      <Proof />
-      <PublicSlots />
-      
-      <CTA />
+      <Reveal><About /></Reveal>
+      <Reveal><Philosophy /></Reveal>
+      <Reveal><Framework /></Reveal>
+      <Reveal><Services /></Reveal>
+      <Reveal><Coach /></Reveal>
+      <Reveal><Proof /></Reveal>
+      <Reveal><PublicSlots /></Reveal>
+      <Reveal><CTA /></Reveal>
       <Footer />
       <StickyCTA />
     </main>
