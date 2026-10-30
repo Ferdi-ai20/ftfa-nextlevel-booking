@@ -1,4 +1,3 @@
-import { sendLovableEmail } from 'npm:@lovable.dev/email-js'
 import { createClient } from 'npm:@supabase/supabase-js@2'
 
 const MAX_RETRIES = 5
@@ -7,9 +6,66 @@ const DEFAULT_SEND_DELAY_MS = 200
 const DEFAULT_AUTH_TTL_MINUTES = 15
 const DEFAULT_TRANSACTIONAL_TTL_MINUTES = 60
 
+// Replies land in Ferdi's real inbox, not the technical sending subdomain.
+const REPLY_TO_EMAIL = 'info@ftfaacademy.nl'
+
+// Structured error so isRateLimited/isForbidden/getRetryAfterSeconds below
+// can inspect .status and .retryAfterSeconds the same way they did for the
+// Lovable email-js library's errors.
+class EmailSendError extends Error {
+  status: number
+  retryAfterSeconds: number | null
+  constructor(status: number, message: string, retryAfterSeconds: number | null) {
+    super(message)
+    this.status = status
+    this.retryAfterSeconds = retryAfterSeconds
+  }
+}
+
+// Send one email via the Resend API.
+async function sendViaResend(
+  apiKey: string,
+  payload: { to: string; from: string; subject: string; html: string; text: string; unsubscribeUrl: string | null }
+): Promise<void> {
+  const res = await fetch('https://api.resend.com/emails', {
+    method: 'POST',
+    headers: {
+      Authorization: `Bearer ${apiKey}`,
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({
+      from: payload.from,
+      to: [payload.to],
+      subject: payload.subject,
+      html: payload.html,
+      text: payload.text,
+      reply_to: REPLY_TO_EMAIL,
+      ...(payload.unsubscribeUrl
+        ? {
+            headers: {
+              'List-Unsubscribe': `<${payload.unsubscribeUrl}>`,
+              'List-Unsubscribe-Post': 'List-Unsubscribe=One-Click',
+            },
+          }
+        : {}),
+    }),
+  })
+
+  if (res.ok) return
+
+  let message = `Resend API error: ${res.status}`
+  try {
+    const body = await res.text()
+    if (body) message = `Resend API error: ${res.status} ${body}`
+  } catch {
+    /* ignore */
+  }
+  const retryAfterHeader = res.headers.get('retry-after')
+  const retryAfterSeconds = retryAfterHeader ? Number(retryAfterHeader) : null
+  throw new EmailSendError(res.status, message, Number.isFinite(retryAfterSeconds) ? retryAfterSeconds : null)
+}
+
 // Check if an error is a rate-limit (429) response.
-// Uses EmailAPIError.status when available (email-js >=0.x with structured errors),
-// falls back to parsing the error message for older versions.
 function isRateLimited(error: unknown): boolean {
   if (error && typeof error === 'object' && 'status' in error) {
     return (error as { status: number }).status === 429
@@ -26,7 +82,7 @@ function isForbidden(error: unknown): boolean {
   return error instanceof Error && error.message.includes('403')
 }
 
-// Extract Retry-After seconds from a structured EmailAPIError, or default to 60s.
+// Extract Retry-After seconds from a structured EmailSendError, or default to 60s.
 function getRetryAfterSeconds(error: unknown): number {
   if (error && typeof error === 'object' && 'retryAfterSeconds' in error) {
     return (error as { retryAfterSeconds: number | null }).retryAfterSeconds ?? 60
@@ -79,7 +135,7 @@ async function moveToDlq(
 }
 
 Deno.serve(async (req) => {
-  const apiKey = Deno.env.get('LOVABLE_API_KEY')
+  const apiKey = Deno.env.get('RESEND_API_KEY')
   const supabaseUrl = Deno.env.get('SUPABASE_URL')
   const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')
 
@@ -249,26 +305,17 @@ Deno.serve(async (req) => {
       }
 
       try {
-        await sendLovableEmail(
-          {
-            run_id: payload.run_id,
-            to: payload.to,
-            from: payload.from,
-            sender_domain: payload.sender_domain,
-            subject: payload.subject,
-            html: payload.html,
-            text: payload.text,
-            purpose: payload.purpose,
-            label: payload.label,
-            idempotency_key: payload.idempotency_key,
-            unsubscribe_token: payload.unsubscribe_token,
-            message_id: payload.message_id,
-          },
-          // sendUrl is optional — when LOVABLE_SEND_URL is not set, the library
-          // falls back to the default Lovable API endpoint (https://api.lovable.dev).
-          // Set LOVABLE_SEND_URL as a Supabase secret to override (e.g. for local dev).
-          { apiKey, sendUrl: Deno.env.get('LOVABLE_SEND_URL') }
-        )
+        await sendViaResend(apiKey, {
+          to: payload.to,
+          from: payload.from,
+          subject: payload.subject,
+          html: payload.html,
+          text: payload.text,
+          unsubscribeUrl:
+            payload.unsubscribe_token && typeof payload.unsubscribe_token === 'string'
+              ? `${supabaseUrl}/functions/v1/handle-email-unsubscribe?token=${encodeURIComponent(payload.unsubscribe_token)}`
+              : null,
+        })
 
         // Log success
         await supabase.from('email_send_log').insert({
