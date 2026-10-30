@@ -8,7 +8,7 @@ export type TrainingType = "one_on_one" | "duo" | "small_group";
 
 export type SlotVisibility = "private" | "public" | "hidden";
 export type SlotStatus = "open" | "full" | "cancelled";
-export type BookingStatus = "confirmed" | "cancelled";
+export type BookingStatus = "confirmed" | "pending" | "cancelled";
 
 export const BOOKING_LEAD_HOURS = 24;
 export const CANCEL_LEAD_HOURS = 48;
@@ -31,4 +31,4 @@ export const isFuture = (date: string, start: string) =>
 export const hoursUntil = (date: string, start: string) =>
   (new Date(`${date}T${start}`).getTime() - Date.now()) / 36e5;
 
-export const ACTIVE_BOOKING_STATUSES: BookingStatus[] = ["confirmed"];
+export const ACTIVE_BOOKING_STATUSES: BookingStatus[] = ["confirmed", "pending"];

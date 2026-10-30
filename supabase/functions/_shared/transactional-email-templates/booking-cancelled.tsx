@@ -6,19 +6,21 @@ import { WhatsAppFooter } from './_whatsapp-footer.tsx'
 
 interface Props {
   recipientName?: string; date?: string; slotTime?: string;
-  trainingType?: string; byAdmin?: boolean; reason?: string;
+  trainingType?: string; byAdmin?: boolean; reason?: string; wasRequest?: boolean;
 }
 
-const Email = ({ recipientName, date, slotTime, trainingType, byAdmin, reason }: Props) => (
+const Email = ({ recipientName, date, slotTime, trainingType, byAdmin, reason, wasRequest }: Props) => (
   <Html lang="nl" dir="ltr">
     <Head />
-    <Preview>Boeking geannuleerd</Preview>
+    <Preview>{wasRequest ? 'Je aanvraag bij FTFA is niet geplaatst' : 'Boeking geannuleerd'}</Preview>
     <Body style={main}>
       <Container style={container}>
-        <Heading style={h1}>Boeking geannuleerd</Heading>
+        <Heading style={h1}>{wasRequest ? 'Aanvraag niet geplaatst' : 'Boeking geannuleerd'}</Heading>
         <Text style={text}>Hoi{recipientName ? ` ${recipientName}` : ''},</Text>
         <Text style={text}>
-          {byAdmin
+          {wasRequest
+            ? `Je aanvraag${date ? ` voor ${date}` : ''}${slotTime ? ` om ${slotTime}` : ''} is helaas niet geplaatst. Dit plekje gaat niet naar jou toe, maar hou de site in de gaten voor nieuwe open trainingen.`
+            : byAdmin
             ? `Je training${date ? ` op ${date}` : ''}${slotTime ? ` om ${slotTime}` : ''} is geannuleerd door de coach.`
             : `Je boeking${date ? ` op ${date}` : ''}${slotTime ? ` om ${slotTime}` : ''} is geannuleerd.`}
         </Text>
@@ -36,7 +38,7 @@ const Email = ({ recipientName, date, slotTime, trainingType, byAdmin, reason }:
 
 export const template = {
   component: Email,
-  subject: 'Boeking geannuleerd',
+  subject: (data: { wasRequest?: boolean }) => data?.wasRequest ? 'Je aanvraag bij FTFA is niet geplaatst' : 'Boeking geannuleerd',
   displayName: 'Booking cancelled (NL)',
   previewData: { recipientName: 'Lucas', date: 'zaterdag 14 juni', slotTime: '11:00', trainingType: '1-op-1', byAdmin: true },
 } satisfies TemplateEntry

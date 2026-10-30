@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { fmtDate, fmtTime, trainingTypeLabel, TrainingType, BookingStatus } from "@/lib/slots";
+import { notify } from "@/lib/notify";
 import { LoadingBlock, LoadingTimeoutFallback, useLoadingTimeout } from "@/components/LoadingState";
 
 type Row = {
@@ -50,7 +51,7 @@ const fmtDob = (dob: string | null, year: number | null): string | null => {
 
 const Bookings = () => {
   const [rows, setRows] = useState<Row[]>([]);
-  const [filter, setFilter] = useState<"upcoming" | "past" | "cancelled" | "all">("upcoming");
+  const [filter, setFilter] = useState<"pending" | "upcoming" | "past" | "cancelled" | "all">("upcoming");
   const [search, setSearch] = useState("");
   const [loading, setLoading] = useState(true);
   const [retryKey, setRetryKey] = useState(0);
@@ -96,12 +97,62 @@ const Bookings = () => {
     void load();
   };
 
+  const approve = async (r: Row) => {
+    const { error } = await supabase.from("bookings").update({ status: "confirmed" }).eq("id", r.id);
+    if (error) return toast.error(error.message);
+    toast.success("Aanvraag goedgekeurd");
+    const s = r.training_slots;
+    if (r.guest_email && s) {
+      void notify(
+        "booking-confirmed",
+        r.guest_email,
+        {
+          parentName: r.guest_parent_name ?? "",
+          playerName: parsePlayerName(r.guest_name) ?? "",
+          date: fmtDate(s.date),
+          slotTime: `${fmtTime(s.start_time)}–${fmtTime(s.end_time)}`,
+          trainingType: trainingTypeLabel(s.training_type),
+          location: s.location ?? "",
+        },
+        `booking-approve-${r.id}`,
+      );
+    }
+    void load();
+  };
+
+  const decline = async (r: Row) => {
+    if (!confirm("Deze aanvraag afwijzen? De gast krijgt hier automatisch bericht over.")) return;
+    const { error } = await supabase.from("bookings").update({ status: "cancelled", cancelled_by: "admin" }).eq("id", r.id);
+    if (error) return toast.error(error.message);
+    toast.success("Aanvraag afgewezen");
+    const s = r.training_slots;
+    if (r.guest_email && s) {
+      void notify(
+        "booking-cancelled",
+        r.guest_email,
+        {
+          recipientName: r.guest_parent_name ?? "",
+          date: fmtDate(s.date),
+          slotTime: fmtTime(s.start_time),
+          trainingType: trainingTypeLabel(s.training_type),
+          byAdmin: true,
+          wasRequest: true,
+        },
+        `booking-decline-${r.id}`,
+      );
+    }
+    void load();
+  };
+
+  const pendingCount = useMemo(() => rows.filter((r) => r.status === "pending").length, [rows]);
+
   const filtered = useMemo(() => {
     const now = Date.now();
     const q = search.trim().toLowerCase();
     return rows.filter((r) => {
       if (!r.training_slots) return false;
       const t = new Date(`${r.training_slots.date}T${r.training_slots.start_time}`).getTime();
+      if (filter === "pending" && r.status !== "pending") return false;
       if (filter === "upcoming" && !(r.status === "confirmed" && t > now)) return false;
       if (filter === "past" && !(r.status === "confirmed" && t <= now)) return false;
       if (filter === "cancelled" && r.status !== "cancelled") return false;
@@ -118,7 +169,7 @@ const Bookings = () => {
     }).sort((a, b) => {
       const ta = new Date(`${a.training_slots!.date}T${a.training_slots!.start_time}`).getTime();
       const tb = new Date(`${b.training_slots!.date}T${b.training_slots!.start_time}`).getTime();
-      return filter === "upcoming" ? ta - tb : tb - ta;
+      return filter === "upcoming" || filter === "pending" ? ta - tb : tb - ta;
     });
   }, [rows, filter, search]);
 
@@ -129,11 +180,22 @@ const Bookings = () => {
           <div className="text-[11px] uppercase tracking-[0.3em] text-primary">/ Bookings</div>
           <h1 className="display-font text-2xl md:text-3xl uppercase mt-2">Bookings</h1>
         </div>
-        <div className="flex gap-2 flex-wrap">
+        <div className="flex gap-2 flex-wrap items-center">
+          {pendingCount > 0 && (
+            <button
+              onClick={() => setFilter("pending")}
+              className="flex items-center gap-1.5 border border-amber-500/60 bg-amber-500/10 text-amber-500 px-3 py-2 text-[11px] uppercase tracking-widest font-semibold hover:bg-amber-500/20"
+            >
+              <span className="h-1.5 w-1.5 rounded-full bg-amber-500 animate-pulse" aria-hidden="true" />
+              {pendingCount} {pendingCount === 1 ? "aanvraag" : "aanvragen"} wachten op jou
+            </button>
+          )}
           <input placeholder="Search name / email / phone / club" value={search} onChange={(e) => setSearch(e.target.value)} className="bg-background border border-border px-3 py-2 text-sm" />
           <div className="flex border border-border">
-            {(["upcoming", "past", "cancelled", "all"] as const).map((f) => (
-              <button key={f} onClick={() => setFilter(f)} className={`px-3 py-2 text-[11px] uppercase tracking-widest ${filter === f ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:text-foreground"}`}>{f}</button>
+            {(["pending", "upcoming", "past", "cancelled", "all"] as const).map((f) => (
+              <button key={f} onClick={() => setFilter(f)} className={`px-3 py-2 text-[11px] uppercase tracking-widest ${filter === f ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:text-foreground"}`}>
+                {f === "pending" ? `aanvragen${pendingCount > 0 ? ` (${pendingCount})` : ""}` : f}
+              </button>
             ))}
           </div>
         </div>
@@ -197,7 +259,23 @@ const Bookings = () => {
                     )}
                   </div>
                   <div className="flex gap-2 shrink-0 items-center">
-                    <span className={`text-[10px] uppercase tracking-widest px-2 py-1 border ${r.status === "confirmed" ? "border-primary text-primary" : "border-border text-muted-foreground"}`}>{r.status}</span>
+                    <span
+                      className={`text-[10px] uppercase tracking-widest px-2 py-1 border ${
+                        r.status === "confirmed"
+                          ? "border-primary text-primary"
+                          : r.status === "pending"
+                          ? "border-amber-500 text-amber-500"
+                          : "border-border text-muted-foreground"
+                      }`}
+                    >
+                      {r.status === "pending" ? "aangevraagd" : r.status === "confirmed" ? "bevestigd" : "geannuleerd"}
+                    </span>
+                    {r.status === "pending" && (
+                      <>
+                        <button onClick={() => approve(r)} className="text-[10px] uppercase tracking-widest bg-primary text-primary-foreground px-3 py-1.5 hover:bg-primary/90 font-semibold">Goedkeuren</button>
+                        <button onClick={() => decline(r)} className="text-[10px] uppercase tracking-widest border border-destructive/40 text-destructive px-3 py-1.5 hover:bg-destructive/10">Afwijzen</button>
+                      </>
+                    )}
                     {r.status === "confirmed" && (
                       <button onClick={() => cancel(r)} className="text-[10px] uppercase tracking-widest border border-destructive/40 text-destructive px-3 py-1.5 hover:bg-destructive/10">Cancel</button>
                     )}

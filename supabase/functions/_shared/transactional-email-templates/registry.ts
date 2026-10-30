@@ -10,6 +10,7 @@ export interface TemplateEntry {
 }
 
 import { template as bookingConfirmed } from './booking-confirmed.tsx'
+import { template as bookingRequested } from './booking-requested.tsx'
 import { template as bookingCancelled } from './booking-cancelled.tsx'
 import { template as bookingReminder24h } from './booking-reminder-24h.tsx'
 import { template as applicationApproved } from './application-approved.tsx'
@@ -21,6 +22,7 @@ import { template as adminInviteSent } from './admin-invite-sent.tsx'
 
 export const TEMPLATES: Record<string, TemplateEntry> = {
   'booking-confirmed': bookingConfirmed,
+  'booking-requested': bookingRequested,
   'booking-cancelled': bookingCancelled,
   'booking-reminder-24h': bookingReminder24h,
   'application-approved': applicationApproved,

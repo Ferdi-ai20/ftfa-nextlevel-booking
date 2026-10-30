@@ -134,7 +134,7 @@ const PublicSlots = () => {
                   onClick={() => setActive(s)}
                   className="mt-4 w-full bg-primary text-primary-foreground px-3 py-2.5 text-xs uppercase tracking-widest font-semibold hover:bg-primary/90"
                 >
-                  Boek deze training
+                  Vraag deze training aan
                 </button>
               </div>
             ))}
@@ -200,7 +200,7 @@ const GuestBookingModal = ({ slot, onClose }: { slot: Slot; onClose: () => void 
     const dobYear = Number(d.player_dob.slice(0, 4));
     const { error } = await supabase.from("bookings").insert({
       slot_id: slot.id,
-      status: "confirmed",
+      status: "pending",
       guest_parent_name: d.parent_name,
       guest_name: `${d.parent_name} (ouder van ${d.player_name})`,
       guest_email: d.email,
@@ -228,7 +228,7 @@ const GuestBookingModal = ({ slot, onClose }: { slot: Slot; onClose: () => void 
     setBusy(false);
 
     void notify(
-      "booking-confirmed",
+      "booking-requested",
       d.email,
       {
         parentName: d.parent_name,
@@ -238,7 +238,7 @@ const GuestBookingModal = ({ slot, onClose }: { slot: Slot; onClose: () => void 
         trainingType: trainingTypeLabel(slot.training_type),
         location: slot.location ?? "",
       },
-      `booking-${slot.id}-${d.email}`,
+      `booking-requested-${slot.id}-${d.email}`,
     );
     void notify(
       "admin-new-booking",
@@ -257,6 +257,7 @@ const GuestBookingModal = ({ slot, onClose }: { slot: Slot; onClose: () => void 
         position: d.position,
         visibility: "public",
         bookingType: "guest",
+        pending: true,
       },
       `admin-booking-${slot.id}-${d.email}`,
     );
@@ -283,13 +284,14 @@ const GuestBookingModal = ({ slot, onClose }: { slot: Slot; onClose: () => void 
       <div className="bg-card border border-border w-full max-w-lg max-h-[92vh] overflow-auto">
         {submitted ? (
           <div className="p-8 text-center space-y-4">
-            <div className="display-font text-2xl uppercase">Boeking bevestigd ✓</div>
+            <div className="display-font text-2xl uppercase">Aanvraag ontvangen ✓</div>
             <p className="text-sm text-muted-foreground">
-              Bedankt! Je hebt {slot.location ? `bij ${slot.location} ` : ""}een plek geboekt voor{" "}
+              Bedankt! Je hebt {slot.location ? `bij ${slot.location} ` : ""}een plek aangevraagd voor{" "}
               <strong>{fmtDate(slot.date)}</strong> om <strong>{fmtTime(slot.start_time)}</strong>.
             </p>
             <p className="text-sm text-muted-foreground">
-              Je ontvangt binnen enkele minuten een bevestigingsmail op <strong>{form.email}</strong>.
+              Ferdi beoordeelt je aanvraag persoonlijk. Zodra hij akkoord geeft, ontvang je een bevestigingsmail op{" "}
+              <strong>{form.email}</strong>.
             </p>
             <div className="text-xs text-muted-foreground border-t border-border pt-4">
               Voor vragen of last-minute wijzigingen, neem contact op met Ferdi via WhatsApp:{" "}
@@ -352,7 +354,7 @@ const GuestBookingModal = ({ slot, onClose }: { slot: Slot; onClose: () => void 
             </div>
 
             <p className="text-[11px] text-muted-foreground">
-              Je boeking wordt direct bevestigd. Je krijgt een bevestigingsmail.
+              Je aanvraag wordt beoordeeld door Ferdi. Je krijgt eerst een ontvangstbevestiging, en zodra hij akkoord geeft een definitieve bevestiging per e-mail.
             </p>
 
             <button
@@ -360,7 +362,7 @@ const GuestBookingModal = ({ slot, onClose }: { slot: Slot; onClose: () => void 
               disabled={busy}
               className="w-full bg-primary text-primary-foreground py-3 text-xs uppercase tracking-widest font-semibold hover:bg-primary/90 disabled:opacity-50"
             >
-              {busy ? "Bezig met boeken..." : "Bevestig boeking"}
+              {busy ? "Bezig met aanvragen..." : "Training aanvragen"}
             </button>
           </form>
         )}

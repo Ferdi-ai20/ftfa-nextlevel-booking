@@ -795,7 +795,7 @@ export type Database = {
       app_role: "admin" | "user"
       application_status: "pending" | "approved" | "rejected"
       booking_audience: "everyone" | "waitlist_only" | "tagged_only"
-      booking_status: "confirmed" | "cancelled"
+      booking_status: "confirmed" | "pending" | "cancelled"
       confirmation_status: "attending" | "not_attending" | "different_time"
       note_subject: "player" | "waitlist_entry"
       player_level:
@@ -951,7 +951,7 @@ export const Constants = {
       app_role: ["admin", "user"],
       application_status: ["pending", "approved", "rejected"],
       booking_audience: ["everyone", "waitlist_only", "tagged_only"],
-      booking_status: ["confirmed", "cancelled"],
+      booking_status: ["confirmed", "pending", "cancelled"],
       confirmation_status: ["attending", "not_attending", "different_time"],
       note_subject: ["player", "waitlist_entry"],
       player_level: [

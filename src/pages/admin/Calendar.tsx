@@ -36,6 +36,7 @@ type Booking = {
   guest_name: string | null;
   guest_email: string | null;
   guest_phone: string | null;
+  guest_parent_name: string | null;
   profile_id: string | null;
   player_id: string | null;
 };
@@ -129,7 +130,7 @@ const Calendar = () => {
       setSlots((s ?? []) as Slot[]);
       if (s && s.length) {
         const ids = s.map((x) => x.id);
-        const { data: b, error: bookingError } = await supabase.from("bookings").select("id, slot_id, status, guest_name, guest_email, guest_phone, profile_id, player_id").in("slot_id", ids);
+        const { data: b, error: bookingError } = await supabase.from("bookings").select("id, slot_id, status, guest_name, guest_email, guest_phone, guest_parent_name, profile_id, player_id").in("slot_id", ids);
         if (bookingError) throw bookingError;
         setBookings((b ?? []) as Booking[]);
       } else {
@@ -152,6 +153,9 @@ const Calendar = () => {
 
   const countFor = (slotId: string) =>
     bookings.filter((b) => b.slot_id === slotId && ACTIVE_BOOKING_STATUSES.includes(b.status)).length;
+
+  const pendingFor = (slotId: string) =>
+    bookings.filter((b) => b.slot_id === slotId && b.status === "pending").length;
 
   const openCreate = (date: string) => {
     setEditing(null);
@@ -249,6 +253,40 @@ const Calendar = () => {
     void load();
   };
 
+  const approveBooking = async (b: Booking) => {
+    const { error } = await supabase.from("bookings").update({ status: "confirmed" }).eq("id", b.id);
+    if (error) return toast.error(error.message);
+    toast.success("Aanvraag goedgekeurd");
+    const s = slots.find((x) => x.id === b.slot_id);
+    if (b.guest_email && s) {
+      void notify("booking-confirmed", b.guest_email, {
+        parentName: b.guest_parent_name ?? "",
+        date: fmtDate(s.date),
+        slotTime: `${fmtTime(s.start_time)}–${fmtTime(s.end_time)}`,
+        trainingType: trainingTypeLabel(s.training_type),
+        location: s.location ?? "",
+      }, `booking-approve-${b.id}`);
+    }
+    void load();
+  };
+
+  const declineBooking = async (b: Booking) => {
+    if (!confirm("Deze aanvraag afwijzen? De gast krijgt hier automatisch bericht over.")) return;
+    const { error } = await supabase.from("bookings").update({ status: "cancelled", cancelled_by: "admin" }).eq("id", b.id);
+    if (error) return toast.error(error.message);
+    toast.success("Aanvraag afgewezen");
+    const s = slots.find((x) => x.id === b.slot_id);
+    if (b.guest_email && s) {
+      void notify("booking-cancelled", b.guest_email, {
+        recipientName: b.guest_parent_name ?? "",
+        date: fmtDate(s.date),
+        slotTime: fmtTime(s.start_time),
+        byAdmin: true,
+        wasRequest: true,
+      }, `booking-decline-${b.id}`);
+    }
+    void load();
+  };
 
   const getProfileEmail = async (_profileId: string | null) => {
     return null;
@@ -314,11 +352,11 @@ const Calendar = () => {
       {loading ? (
         timedOut ? <LoadingTimeoutFallback onRetry={retryLoad} /> : <LoadingBlock />
       ) : view === "month" ? (
-        <MonthGrid cursor={cursor} slotsByDay={slotsByDay} countFor={countFor} onDay={(d) => openCreate(d)} onSlot={openEdit} />
+        <MonthGrid cursor={cursor} slotsByDay={slotsByDay} countFor={countFor} pendingFor={pendingFor} onDay={(d) => openCreate(d)} onSlot={openEdit} />
       ) : view === "week" ? (
-        <WeekGrid from={startOfWeek(cursor)} slotsByDay={slotsByDay} countFor={countFor} onDay={openCreate} onSlot={openEdit} />
+        <WeekGrid from={startOfWeek(cursor)} slotsByDay={slotsByDay} countFor={countFor} pendingFor={pendingFor} onDay={openCreate} onSlot={openEdit} />
       ) : (
-        <DayList date={isoDay(cursor)} slots={slotsByDay.get(isoDay(cursor)) ?? []} countFor={countFor} onAdd={() => openCreate(isoDay(cursor))} onSlot={openEdit} />
+        <DayList date={isoDay(cursor)} slots={slotsByDay.get(isoDay(cursor)) ?? []} countFor={countFor} pendingFor={pendingFor} onAdd={() => openCreate(isoDay(cursor))} onSlot={openEdit} />
       )}
 
       {/* Detail / edit drawer */}
@@ -331,7 +369,9 @@ const Calendar = () => {
           onSave={save}
           onVisibility={(v) => setVisibility(editing, v)}
           onCancelBooking={cancelBooking}
-          
+          onApproveBooking={approveBooking}
+          onDeclineBooking={declineBooking}
+
           form={form}
           setForm={setForm}
         />
@@ -354,12 +394,14 @@ const MonthGrid = ({
   cursor,
   slotsByDay,
   countFor,
+  pendingFor,
   onDay,
   onSlot,
 }: {
   cursor: Date;
   slotsByDay: Map<string, Slot[]>;
   countFor: (id: string) => number;
+  pendingFor: (id: string) => number;
   onDay: (d: string) => void;
   onSlot: (s: Slot) => void;
 }) => {
@@ -387,9 +429,12 @@ const MonthGrid = ({
                 <div
                   key={s.id}
                   onClick={(e) => { e.stopPropagation(); onSlot(s); }}
-                  className={`text-[10px] px-1.5 py-0.5 border truncate ${visibilityColors[s.visibility]}`}
+                  className={`text-[10px] px-1.5 py-0.5 border truncate flex items-center gap-1 ${visibilityColors[s.visibility]}`}
                 >
-                  {fmtTime(s.start_time)} {trainingTypeLabel(s.training_type)} {countFor(s.id)}/{s.max_players}
+                  <span className="truncate">{fmtTime(s.start_time)} {trainingTypeLabel(s.training_type)} {countFor(s.id)}/{s.max_players}</span>
+                  {pendingFor(s.id) > 0 && (
+                    <span className="shrink-0 text-amber-500 font-semibold">⏳{pendingFor(s.id)}</span>
+                  )}
                 </div>
               ))}
               {daySlots.length > 3 && <div className="text-[10px] text-muted-foreground">+{daySlots.length - 3} meer</div>}
@@ -405,12 +450,14 @@ const WeekGrid = ({
   from,
   slotsByDay,
   countFor,
+  pendingFor,
   onDay,
   onSlot,
 }: {
   from: Date;
   slotsByDay: Map<string, Slot[]>;
   countFor: (id: string) => number;
+  pendingFor: (id: string) => number;
   onDay: (d: string) => void;
   onSlot: (s: Slot) => void;
 }) => {
@@ -437,7 +484,10 @@ const WeekGrid = ({
                 >
                   <div className="flex justify-between text-[11px] font-mono">
                     <span>{fmtTime(s.start_time)}–{fmtTime(s.end_time)}</span>
-                    <span>{countFor(s.id)}/{s.max_players}</span>
+                    <span className="flex items-center gap-1">
+                      {countFor(s.id)}/{s.max_players}
+                      {pendingFor(s.id) > 0 && <span className="text-amber-500 font-semibold">⏳{pendingFor(s.id)}</span>}
+                    </span>
                   </div>
                   <div className="text-[10px] uppercase tracking-wider opacity-80">{trainingTypeLabel(s.training_type)}</div>
                 </button>
@@ -455,12 +505,14 @@ const DayList = ({
   date,
   slots,
   countFor,
+  pendingFor,
   onAdd,
   onSlot,
 }: {
   date: string;
   slots: Slot[];
   countFor: (id: string) => number;
+  pendingFor: (id: string) => number;
   onAdd: () => void;
   onSlot: (s: Slot) => void;
 }) => (
@@ -476,7 +528,10 @@ const DayList = ({
           <div className="font-mono text-base">{fmtTime(s.start_time)} – {fmtTime(s.end_time)}</div>
           <div className="text-xs uppercase tracking-widest opacity-80">{trainingTypeLabel(s.training_type)} · {s.visibility} · {s.status}</div>
         </div>
-        <div className="text-sm font-mono">{countFor(s.id)}/{s.max_players}</div>
+        <div className="text-sm font-mono flex items-center gap-2">
+          {countFor(s.id)}/{s.max_players}
+          {pendingFor(s.id) > 0 && <span className="text-amber-500 font-semibold text-xs">⏳{pendingFor(s.id)} aanvragen</span>}
+        </div>
       </button>
     ))}
     <button onClick={onAdd} className="w-full border border-dashed border-border p-4 text-xs uppercase tracking-widest text-muted-foreground hover:text-foreground hover:border-foreground/40">
@@ -493,7 +548,9 @@ const SlotDrawer = ({
   onSave,
   onVisibility,
   onCancelBooking,
-  
+  onApproveBooking,
+  onDeclineBooking,
+
   form,
   setForm,
   isNew = false,
@@ -505,7 +562,9 @@ const SlotDrawer = ({
   onSave: () => void;
   onVisibility?: (v: SlotVisibility) => void;
   onCancelBooking?: (b: Booking) => void;
-  
+  onApproveBooking?: (b: Booking) => void;
+  onDeclineBooking?: (b: Booking) => void;
+
   form: typeof emptyForm;
   setForm: (f: typeof emptyForm) => void;
   isNew?: boolean;
@@ -559,13 +618,21 @@ const SlotDrawer = ({
             <div className="space-y-1.5">
               {bookings.length === 0 && <div className="text-xs text-muted-foreground">Geen boekingen.</div>}
               {bookings.map((b) => (
-                <div key={b.id} className="border border-border p-2 text-xs space-y-2">
+                <div key={b.id} className={`border p-2 text-xs space-y-2 ${b.status === "pending" ? "border-amber-500/50" : "border-border"}`}>
                   <div className="flex items-center justify-between gap-2">
                     <div className="truncate">
                       <div className="font-medium">{b.guest_name ?? (b.profile_id ? b.profile_id.slice(0, 8) : "—")}</div>
-                      <div className="text-muted-foreground">{b.guest_email ?? ""} · {b.status}</div>
+                      <div className={b.status === "pending" ? "text-amber-500 font-medium" : "text-muted-foreground"}>
+                        {b.guest_email ?? ""} · {b.status === "pending" ? "aangevraagd" : b.status === "confirmed" ? "bevestigd" : "geannuleerd"}
+                      </div>
                     </div>
                     <div className="flex gap-1 shrink-0">
+                      {b.status === "pending" && (
+                        <>
+                          <button onClick={() => onApproveBooking?.(b)} className="text-[9px] uppercase bg-primary text-primary-foreground px-2 py-1 hover:bg-primary/90 font-semibold">Goedkeuren</button>
+                          <button onClick={() => onDeclineBooking?.(b)} className="text-[9px] uppercase border border-destructive/40 text-destructive px-2 py-1 hover:bg-destructive/10">Afwijzen</button>
+                        </>
+                      )}
                       {b.status === "confirmed" && (
                         <button onClick={() => onCancelBooking?.(b)} className="text-[9px] uppercase border border-destructive/40 text-destructive px-2 py-1 hover:bg-destructive/10">Cancel</button>
                       )}
